@@ -1,18 +1,40 @@
-# Object files
-*.o
-*.ko
+*.py[cod]
+run/*.gz
+run/*.xml
+run/dummy*
+run/trash/*
+run/*.class
 
-# Libraries
-*.lib
-*.a
-
-# Shared objects (inc. Windows DLLs)
-*.dll
+# C extensions
 *.so
-*.so.*
-*.dylib
 
-# Executables
-*.exe
-*.out
-*.app
+# Packages
+*.egg
+*.egg-info
+dist
+build
+eggs
+parts
+bin
+var
+sdist
+develop-eggs
+.installed.cfg
+lib
+lib64
+
+# Installer logs
+pip-log.txt
+
+# Unit test / coverage reports
+.coverage
+.tox
+nosetests.xml
+
+# Translations
+*.mo
+
+# Mr Developer
+.mr.developer.cfg
+.project
+.pydevproject
