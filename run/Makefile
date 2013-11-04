@@ -10,8 +10,40 @@ SEED=1
 #ls *.key | sed 's|.key||g' > ../../../run/existed-twitter-pseudoword-list.txt
 
 
+### 1.3 INPUT files:
+TRAIN=/work/upos/data/wsj.tok.gz 
+TESTHEAD=1560570 # The first line of PTB-WSJ in TRAIN (same as first line of TEST)
+TESTTAIL=1613710 # The last line of PTB-WSJ in TRAIN (last line of TEST is 1612868)
+GETTRAIN=zcat ${TRAIN} | perl -ne 'print if ($$. < ${TESTHEAD} || $$. > ${TESTTAIL})'
 
+### 2.2 SRILM options:
+LM_NGRAM=4  # n-gram order
+LM_VOCAB=5 # words seen less than this in GETTRAIN will be replaced with <unk>
+LM_MTYPE=i686-m64 # architecture for compiling srilm
+
+%.vocab.gz: ${TRAIN}
+	${GETTRAIN} | ngram-count -write-order 1 -text - -write - | \
+	perl -lane 'print $$F[0] if $$F[1] >= ${LM_VOCAB}' | gzip > $@
+
+%.lm.gz: %.vocab.gz ${TRAIN} 
+	${GETTRAIN} | ngram-count -order ${LM_NGRAM} -kndiscount \
+	-interpolate -unk -vocab $< -text - -lm $@
+
+%.ppl.gz: %.lm.gz
+	zcat *aw.sentence.gz | ngram -unk -order ${LM_NGRAM} -ppl - -lm $<
+
+# for senseval2, senseval3, semeval2007
+%.aw.fetch:
+	fetch-all-words.py $* 
+
+semeval10.sent.gz:
+	fetch-semeval10-aw.py | gzip > $@
+
+%.aw.tw.gz:
+	fetch-aw-tw.py $* | gzip > $@
+	zcat $@ | wc
+
+%.aw.tw-line.gz: %.aw.tw.gz
+	format-aw-tw.py $<
 
 .SECONDARY:
-#small.tok.gz small.pos.gz small.lem.gz small.raw.gz
-#tok.mono.gz pos.mono.gz lem.mono.gz raw.mono.gz

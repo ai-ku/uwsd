@@ -3,33 +3,46 @@
 
 __author__ = "Osman Baskaya"
 
-from nltk.corpus import treebank
+from nltk.corpus.reader import BracketParseCorpusReader
 import sys
+import gzip
+from uwsd_utils import get_dataset_path
+import os
 
-semeval2007 = "wsj_0105.mrg  wsj_0186.mrg  wsj_0239.mrg"
-senseval3 = "cl23.mrg wsj_1695.mrg wsj_1778.mrg"
-senseval2 = "wsj_0089.mrg  wsj_0465.mrg  wsj_1286.mrg"
+dataset=sys.argv[1]
 
-dataset = sys.argv[1]
-if dataset == 'semeval2007':
-    files = semeval2007
-elif dataset == 'senseval3':
-    files = senseval3
-elif dataset == 'senseval2':
-    files = senseval2
-else:
+path = os.path.dirname(get_dataset_path(dataset))
+
+sent_error = ["Ruth K. Nelson Cullowhee , N.C .", ]
+sent_error = set(sent_error)
+
+if path is None:
     print >> sys.stderr, "Wrong dataset"
-    exit()
+    exit(1)
 
-for f in files.split():
-    for sentence in treebank.parsed_sents(f):
-        s = []
+fnames = "clean-sent sent pos".split()
+files = map(lambda x: gzip.open("{}.{}.gz".format(dataset, x), 'w'), fnames)
+
+def write2file(lines, files):
+    for line, f in zip(lines,files):
+        try:
+            f.write(" ".join(line))
+            f.write('\n')
+        except TypeError: # tree parsing error
+            print lines
+
+reader = BracketParseCorpusReader(path, '.*mrg')
+for fileid in reader.fileids():
+    for sentence in reader.parsed_sents(fileid):
+        clean_sent_list = []
+        sent_list = []
+        pos_list = []
         for word, p in sentence.pos():
             if p != '-NONE-':
-                s.append(word)
-        try:
-            print ' '.join(s)
-        except TypeError as e:
-            print >> sys.stderr, str(e)
-            print >> sys.stderr, "This sentence is skipped"
+                clean_sent_list.append(word)
+            sent_list.append(word)
+            pos_list.append(p)
+        lines = [clean_sent_list, sent_list, pos_list]
+        write2file(lines, files)
 
+map(lambda f: f.close(), files)
