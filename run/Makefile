@@ -43,7 +43,7 @@ semeval10.sent.gz:
 	fetch-aw-tw.py $* | gzip > $@
 	zcat $@ | wc
 
-%.aw.tw-line.gz: %.aw.tw.gz
-	format-aw-tw.py $<
+%.aw.tw.all.gz: %.aw.tw.gz %.pos.gz
+	aw-add-pos.py $^ | gzip > $@
 
 .SECONDARY:
