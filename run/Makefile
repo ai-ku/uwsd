@@ -50,9 +50,9 @@ semeval07.key: ../data/semeval07/key/english-all-words.test.key
 	cat $< | sed -r 's|<answer head="(\w+)(.*)" senseid="(.*(::)?)"/>|\1 \1\2 \3|g' > $@
 
 senseval2.key: ../data/senseval2/english-all-words/test/key
-	ln -s $< $@
+	cp $< $@
 
 senseval3.key: ../data/senseval3/EnglishAW.test.key
-	ln -s $< $@
+	cp $< $@
 
 .SECONDARY:
