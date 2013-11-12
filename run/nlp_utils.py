@@ -70,6 +70,13 @@ def calc_perp_dict_graded(d):
         entropy += -p * math.log(p, 2)
     return 2 ** entropy
     
+def traverse(o, tree_types=(list, tuple)):
+    if isinstance(o, tree_types):
+        for value in o:
+            for subvalue in traverse(value):
+                yield subvalue
+    else:
+        yield o
 
 #a = [1, 1, 1, 2, 2, 2, 3, 3]
 #b = ['a', 'a', 'a', 'b', 'b', 'b', 'c', 'c']

@@ -16,6 +16,12 @@ path = os.path.dirname(get_dataset_path(dataset))
 sent_error = ["Ruth K. Nelson Cullowhee , N.C .", ]
 sent_error = set(sent_error)
 
+# Semeval07, senseval2, senseval3 dataset contain some tokenization convention.
+# This tokenization should be fixed since our LM does not follow this convention.
+# Details for Treebank tokenization: http://www.cis.upenn.edu/~treebank/tokenization.html
+fix = {'-LCB-': '{', '-RCB': '}', "n't": 'not', 'ca': 'can', 'wo': 'will', 
+      "-LRB-": "(", "-RRB-": ")", "-RSB-": "]", "-LSB-": "[" }
+
 if path is None:
     print >> sys.stderr, "Wrong dataset"
     exit(1)
@@ -27,9 +33,9 @@ def write2file(lines, files):
     for line, f in zip(lines,files):
         try:
             f.write(" ".join(line))
-            f.write('\n')
         except TypeError: # tree parsing error
             print lines
+        f.write('\n')
 
 reader = BracketParseCorpusReader(path, '.*mrg')
 for fileid in reader.fileids():
@@ -39,6 +45,8 @@ for fileid in reader.fileids():
         pos_list = []
         for word, p in sentence.pos():
             if p != '-NONE-':
+                if word in fix:
+                    word = fix[word]
                 clean_sent_list.append(word)
             sent_list.append(word)
             pos_list.append(p)

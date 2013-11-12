@@ -17,9 +17,11 @@ TESTTAIL=1613710 # The last line of PTB-WSJ in TRAIN (last line of TEST is 16128
 GETTRAIN=zcat ${TRAIN} | perl -ne 'print if ($$. < ${TESTHEAD} || $$. > ${TESTTAIL})'
 
 ### 2.2 SRILM options:
-LM_NGRAM=4  # n-gram order
+LM_NGRAM=4 # n-gram order
 LM_VOCAB=5 # words seen less than this in GETTRAIN will be replaced with <unk>
 LM_MTYPE=i686-m64 # architecture for compiling srilm
+
+LM=ukwac.lm.gz
 
 %.vocab.gz: ${TRAIN}
 	${GETTRAIN} | ngram-count -write-order 1 -text - -write - | \
@@ -30,20 +32,20 @@ LM_MTYPE=i686-m64 # architecture for compiling srilm
 	-interpolate -unk -vocab $< -text - -lm $@
 
 %.ppl.gz: %.lm.gz
-	zcat *aw.sentence.gz | ngram -unk -order ${LM_NGRAM} -ppl - -lm $<
+	zcat *.clean-sent.gz | ngram -unk -order ${LM_NGRAM} -ppl - -lm $<
 
 # for senseval2, senseval3, semeval2007
 %.aw.fetch:
 	fetch-all-words.py $* 
 
-semeval10.sent.gz:
+semeval10.clean-sent.gz:
 	fetch-semeval10-aw.py | gzip > $@
 
 %.aw.tw.gz:
 	fetch-aw-tw.py $* | gzip > $@
 	zcat $@ | wc
 
-%.aw.tw.all.gz: %.aw.tw.gz %.pos.gz
+%.aw.tw.pos.gz: %.aw.tw.gz %.pos.gz
 	aw-add-pos.py $^ | gzip > $@
 
 semeval07.key: ../data/semeval07/key/english-all-words.test.key
@@ -54,5 +56,24 @@ senseval2.key: ../data/senseval2/english-all-words/test/key
 
 senseval3.key: ../data/senseval3/EnglishAW.test.key
 	cp $< $@
+
+%.aw.tw.all.gz: %.pos.gz %.aw.tw.pos.gz
+	index-correct.py $^ | gzip > $@
+
+%.context.gz: %.aw.tw.all.gz %.clean-sent.gz
+	extract-test-context.py $^ | gzip > $@
+
+
+FS_NSUB=100 # go until you have this many substitutes
+FS_PSUB=1.0 # or this much cumulative probability
+FS_OPTIONS=-n ${FS_NSUB} -p ${FS_PSUB}
+
+%.all.sub.gz: %.context.gz
+	zcat $< | fastsubs ${FS_OPTIONS} ${LM} | gzip > $@
+
+%.sub.gz: %.all.sub.gz
+	zcat $< | grep -P "^<.*\d>" | gzip > $@
+	zcat $@ | wc
+	zcat $*.context.gz | wc
 
 .SECONDARY:
