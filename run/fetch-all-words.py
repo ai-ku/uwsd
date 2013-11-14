@@ -13,8 +13,7 @@ dataset=sys.argv[1]
 
 path = os.path.dirname(get_dataset_path(dataset))
 
-sent_error = ["Ruth K. Nelson Cullowhee , N.C .", ]
-sent_error = set(sent_error)
+sent_error = set(["Ruth K. Nelson Cullowhee , N.C .", ])
 
 # Semeval07, senseval2, senseval3 dataset contain some tokenization convention.
 # This tokenization should be fixed since our LM does not follow this convention.
@@ -34,7 +33,7 @@ def write2file(lines, files):
         try:
             f.write(" ".join(line))
         except TypeError: # tree parsing error
-            print lines
+            print >> sys.stderr, "Sentence Error: {}\nOnly new line writing".format(line)
         f.write('\n')
 
 reader = BracketParseCorpusReader(path, '.*mrg')
