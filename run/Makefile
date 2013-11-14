@@ -63,7 +63,6 @@ senseval3.key: ../data/senseval3/EnglishAW.test.key
 %.context.gz: %.aw.tw.all.gz %.clean-sent.gz
 	extract-test-context.py $^ | gzip > $@
 
-
 FS_NSUB=100 # go until you have this many substitutes
 FS_PSUB=1.0 # or this much cumulative probability
 FS_OPTIONS=-n ${FS_NSUB} -p ${FS_PSUB}

@@ -14,17 +14,13 @@ from nlp_utils import fopen, traverse
 from collections import defaultdict as dd
 from copy import deepcopy
 
-if len(sys.argv) != 5:
-    msg = "Usage: {} key_file number_of_semantic_class"
-    print >> sys.stderr, msg.format(sys.argv[0])
-    exit(1)
-
 class Semantic_Class(object):
     
     def __init__(self, test_synsets=set(), synset=None):
         self.senses = set()
         self.lemma_dict = dd(set)
         self.synsets = dd(set)
+        self.synset_set = set()
         self.test_synsets = test_synsets
         if synset is not None:
             self.add_synset(synset)
@@ -32,18 +28,18 @@ class Semantic_Class(object):
     def has_sense(self, sense):
         return sense in self.senses
 
+    def has_synset(self, synset):
+        return synset in self.synset_set
+
     def add_synset(self, synset):
         """Add the synset and its all descendants"""
-        if self.has_sense(synset):
-            msg = "Warning: Semantic Class has already had {} synset".format(synset)
-            print >> sys.stderr, msg
-        else:
-            relation = lambda s: s.hyponyms()
-            descendants = synset.tree(relation)
-            for descendant in descendants:
-                for s in traverse(descendant):
+        relation = lambda s: s.hyponyms()
+        descendants = synset.tree(relation)
+        for descendant in descendants:
+            for s in traverse(descendant):
+                if len(self.test_synsets) == 0 or s in self.test_synsets:
+                    self.synset_set.add(s)
                     for lemma in s.lemmas:
-                        if len(self.test_synsets) == 0 or lemma.synset in self.test_synsets:
                             self.senses.add(lemma.key)
                             self.lemma_dict[lemma.name].add(lemma)
                             self.synsets[lemma.name].add(lemma.synset)
@@ -51,15 +47,17 @@ class Semantic_Class(object):
     def remove_synset(self, synset):
         """Removes the synset and its all descendants"""
         #TODO: remove all lemmas and its descendant lemmas from senses set
-        if self.has_sense(synset):
+        if self.has_synset(synset):
             relation = lambda s: s.hyponyms()
             descendants = synset.tree(relation)
             for descendant in descendants:
                 for s in traverse(descendant):
                     if len(self.test_synsets) == 0 or s in self.test_synsets:
+                        self.synset_set.remove(s)
                         for lemma in s.lemmas:
                             #FIXME: descendants may not exist in this semantic class
                             if lemma.name in self.synsets:
+                                print lemma, lemma.name, lemma.key, lemma.synset
                                 self.senses.remove(lemma.key)
                                 self.lemma_dict[lemma.name].remove(lemma)
                                 self.synsets[lemma.name].remove(lemma.synset)
@@ -74,6 +72,10 @@ class Semantic_Class(object):
     def __str__(self):
         return "\n".join([str(s) for s in self.senses])
 
+def get_synsets_from_key(keys):
+    lemmas = map(wn.lemma_from_key, keys)
+    return set([lemma.synset for lemma in lemmas])
+
 def read_all_words(key_file):
     with open(key_file) as f:
         wi = []
@@ -84,9 +86,9 @@ def read_all_words(key_file):
             wi.append((inst_id, word, line[2]))
     return wi
 
-def filter_by_pos(wi, pos, pos_file):
+def filter_by_pos(wi, pos, aw_file):
     t = []
-    for line in fopen(pos_file):
+    for line in fopen(aw_file):
         line = line.split()
         t.append((line[0], line[4].lower()[0])) #inst_id, pos-tag
     d = dict(t)
@@ -94,23 +96,44 @@ def filter_by_pos(wi, pos, pos_file):
 
 # (word, instance_id, key triple) list
 
-def calc_oracle_accuracy(sc_list):
-    return 1
+def get_first_sense(sc):
+    pass
 
-def find_synset_with_best_accuracy(wik, sc_list):
+def calc_oracle_accuracy(sc_list, gold):
+    tf = []
+    for sense in gold:
+        c = None
+        for sc in sc_list:
+            if sc.has_sense(sense):
+                c = sc
+                break
+        assert c is not None, "Error: No semantic class has sense {}".format(sense)
+        first_sense = get_first_sense(c, sense)
+        if first_sense == sense: s = 1
+        else: s = 0
+        tf.append(s)
+    return sum(tf) / float(len(tf))
+
+def find_synset_with_best_accuracy(sc_list, gold):
     """According to oracle accuracy, find the best synset to create a new 
        semantic class """
-    L = deepcopy(sc_list)
     accuracies = dict()
-    for sc in L:
-        for synset in sc.synset:
-            L = deepcopy(sc_list)
-            new_sm = Semantic_Class()
-            sc.move_synset_to_another_sm(new_sm, synset)
-            L.append(new_sm)
-            accuracy = calc_oracle_accuracy(L)
-            accuracies[(sc, synset)] = accuracy
-    #TODO return synset that maximizes the accuracy
+    for sc in sc_list:
+        for synset_sets in sc.synsets.itervalues():
+            for synset in synset_sets:
+                print "processing %s" % synset
+                classes = []
+                copy_sc = deepcopy(sc)
+                print len(copy_sc.senses),
+                new_sm = Semantic_Class()
+                copy_sc.move_synset_to_another_sm(new_sm, synset)
+                print len(copy_sc.senses)
+                classes.extend(sc_list)
+                classes.append(new_sm)
+                accuracy = calc_oracle_accuracy(classes, gold)
+                accuracies[(sc, synset)] = accuracy
+    key = max(accuracies.iterkeys(), key=lambda x: accuracies[x])
+    return key, accuracies[key]
 
 def create_semantic_class(words, pos, test_synsets):
     sm = Semantic_Class(test_synsets)
@@ -120,23 +143,37 @@ def create_semantic_class(words, pos, test_synsets):
             sm.add_synset(synset)
     return sm
 
-def get_synsets_from_key(keys):
-    lemmas = map(wn.lemma_from_key, keys)
-    return set([lemma.synset for lemma in lemmas])
-
 def run():
+
+    if len(sys.argv) != 5:
+        msg = "Usage: {} key_file number_of_semantic_class"
+        print >> sys.stderr, msg.format(sys.argv[0])
+        exit(1)
+    
     key_file = sys.argv[1]
-    pos_file = sys.argv[2]
+    aw_file = sys.argv[2]
     pos = sys.argv[3]
     n = int(sys.argv[4]) # number of semantic class we need to create
 
-    wik = filter_by_pos(read_all_words(key_file), pos, pos_file)
+    wik = filter_by_pos(read_all_words(key_file), pos, aw_file)
     test_synsets = get_synsets_from_key([t[2] for t in wik if t[2].find('%') != -1])
     sm = create_semantic_class([t[1] for t in wik], pos, test_synsets)
+    gold = [t[2] for t in wik]
     sc_list = [sm]
+    scores = []
     for i in xrange(n):
-        synset = find_synset_with_best_accuracy(wik, sc_list)
+        synset, score = find_synset_with_best_accuracy(sc_list, gold)
         new_sm = Semantic_Class(test_synsets, synset)
         sc_list.append(new_sm)
+        scores.append((i, score))
+#run()
 
-run()
+def test():
+    pass
+
+sm = Semantic_Class()
+air = wn.synsets('air', 'n')[-1]
+sm.add_synset(air)
+sm2 = Semantic_Class()
+sm.move_synset_to_another_sm(sm2, air)
+#print find_synset_with_best_accuracy([sm])

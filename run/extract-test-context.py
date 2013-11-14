@@ -18,8 +18,8 @@ for line in fopen(aw_file):
                                     tw, pos.lower()[0], i_id,
                                     ' '.join(sentences[sent_id][offset + 1:offset + 4]))
     except IndexError:
-        print >> sys.stderr, "Error:", line, sentences[sent_id]
-        exit()
+        raise IndexError("%s %s" % (line, sentences[sent_id]))
+        exit(-1)
     print p
 
 
