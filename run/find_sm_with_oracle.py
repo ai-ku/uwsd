@@ -13,6 +13,7 @@ import sys
 from nlp_utils import fopen, traverse
 from collections import defaultdict as dd
 from copy import deepcopy
+from multiprocessing import Pool
 
 class Semantic_Class(object):
     
@@ -54,7 +55,7 @@ class Semantic_Class(object):
             for descendant in descendants:
                 for s in traverse(descendant):
                     if len(self.test_synsets) == 0 or s in self.test_synsets:
-                        print "\tremoving: {}".format(s)
+                        #print "\tremoving: {}".format(s)
                         if self.has_synset(s):
                             self.synset_set.remove(s)
                             for lemma in s.lemmas:
@@ -120,34 +121,42 @@ def calc_oracle_accuracy(sc_list, gold):
             if first_sense == sense: s = 1
             else: s = 0
             tf.append(s)
-    print sum(tf), len(tf), 
     return sum(tf) / float(len(tf))
+
+
+def _calc(pairs):
+    #print >> sys.stderr, "\t\tcalculating started"
+    sc, sc_list, synset, gold = pairs
+    classes = []
+    copy_sc = deepcopy(sc)
+    #print len(copy_sc.senses),
+    new_sm = Semantic_Class()
+    copy_sc.move_synset_to_another_sm(new_sm, synset)
+    #print len(copy_sc.senses)
+    classes.extend([sclass for sclass in sc_list if sclass is not sc])
+    classes.append(copy_sc)
+    classes.append(new_sm)
+    accuracy = calc_oracle_accuracy(classes, gold)
+    #print >> sys.stderr, "\t\tcalculating finished"
+    return (synset, (accuracy, classes))
 
 def find_synset_with_best_accuracy(sc_list, test_synsets, gold):
     """According to oracle accuracy, find the best synset to create a new 
        semantic class """
+    pool = Pool(processes=20)
     accuracies = dict()
-    print "Find Synset with best accuracy"
+    pairs = []
     for sc in sc_list:
         for synset_sets in sc.synsets.itervalues():
             for synset in synset_sets:
                 if synset in test_synsets:
-                    print "processing %s" % synset
-                    classes = []
-                    copy_sc = deepcopy(sc)
-                    #print len(copy_sc.senses),
-                    new_sm = Semantic_Class()
-                    copy_sc.move_synset_to_another_sm(new_sm, synset)
-                    #print len(copy_sc.senses)
-                    classes.extend(sc_list)
-                    classes.remove(sc)
-                    classes.append(copy_sc)
-                    classes.append(new_sm)
-                    accuracy = calc_oracle_accuracy(classes, gold)
-                    print "\t\taccuracy for {}: {}".format(synset, accuracy)
-                    accuracies[(sc, synset)] = accuracy
-    key = max(accuracies.iterkeys(), key=lambda x: accuracies[x])
-    return key, accuracies[key]
+                    pairs.append([sc, sc_list, synset, gold])
+    print >> sys.stderr, "\tProcessing starts. # of semantic class {}".format(len(sc_list))
+    print >> sys.stderr, "\t{}".format(len(pairs))
+    result = pool.map(_calc, pairs[:5])
+    accuracies = dict(result)
+    key = max(accuracies.iterkeys(), key=lambda x: accuracies[x][0])
+    return accuracies[key][1], key, accuracies[key][0]
 
 def create_semantic_class(words, pos, test_synsets):
     sm = Semantic_Class(test_synsets)
@@ -177,27 +186,30 @@ def run():
     sc_list = [sc,]
     scores = []
     for i in xrange(n):
-        synset, score = find_synset_with_best_accuracy(sc_list, test_synsets, gold)
-        print synset, score
-        exit()
-        new_sc = Semantic_Class(set(), synset)
-        sc_list.append(new_sc)
-        scores.append((i, score))
-run()
+        print >> sys.stderr, "Epoch %d" % (i+1)
+        sc_list, sset, score = find_synset_with_best_accuracy (sc_list, test_synsets, gold)
+        print >> sys.stderr, "\t{}, {}".format(sset, score)
+        scores.append((len(sc_list), score))
+    for score in scores:
+        print score
 
 def test():
-    pass
+    sm = Semantic_Class()
+    air_synsets = wn.synsets('air', 'n')
+    for air in air_synsets:
+        sm.add_synset(air)
+    #sm2 = Semantic_Class()
+    #sm.move_synset_to_another_sm(sm2, air)
+    #print find_synset_with_best_accuracy([sm])
+    print get_first_sense('air', sm)
+    print sm.lemma_sense['air']
+    print len(sm.synsets)
+    #sc_list.append(sm)
+    #synset, score = find_synset_with_best_accuracy(sc_list, gold)
 
-exit()
-sm = Semantic_Class()
-air_synsets = wn.synsets('air', 'n')
-for air in air_synsets:
-    sm.add_synset(air)
-#sm2 = Semantic_Class()
-#sm.move_synset_to_another_sm(sm2, air)
-#print find_synset_with_best_accuracy([sm])
-print get_first_sense('air', sm)
-print sm.lemma_sense['air']
-print len(sm.synsets)
-#sc_list.append(sm)
-#synset, score = find_synset_with_best_accuracy(sc_list, gold)
+def main():
+    run()
+
+if __name__ == '__main__':
+    main()
+

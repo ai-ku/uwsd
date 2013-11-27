@@ -75,4 +75,12 @@ FS_OPTIONS=-n ${FS_NSUB} -p ${FS_PSUB}
 	zcat $@ | wc
 	zcat $*.context.gz | wc
 
+# Creates matrix and %.words.gz
+%.wc.n.matrix.gz: %.sub.gz %.context.gz
+	create-wc-matrix.py $^ n | gzip > $@
+
+# Creates matrix and %.words.gz
+%.wc.v.matrix.gz: %.sub.gz %.context.gz
+	create-wc-matrix.py $^ v | gzip > $@
+
 .SECONDARY:
