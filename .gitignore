@@ -4,6 +4,10 @@ run/*.xml
 run/dummy*
 run/trash/*
 run/*.class
+run/old/
+glookup/
+data/
+
 
 # C extensions
 *.so
