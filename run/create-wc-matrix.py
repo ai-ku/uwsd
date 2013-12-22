@@ -8,14 +8,13 @@ import gzip
 import sys
 from itertools import izip, count
 import re
-from math import e
 from collections import defaultdict as dd
 
 #According -6.92737293   response -7.39505959    according -7.39907217
 #Ill Homeless '' <referred.v.d00.s00.t09> to research by
 
 def prob_conv(s):
-    return pow(e, float(s))
+    return pow(10, float(s))
 
 def index_mapping(subs, contexts, pos):
     regex = re.compile("<.*\.{}\..*\d+>".format(pos))

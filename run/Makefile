@@ -2,6 +2,10 @@ SHELL := /bin/bash
 ### PATH
 export PATH := .:${PATH}:/work/_upos_new/bin:.:${SRILM_PATH}
 
+### Ontonotes Details:
+ONTO_ANNOTATION=../data/ontonotes_v5/data/files/data/english/annotations
+ONTO_SENSE_INVENTORY=../data/ontonotes_v5/data/files/data/english/metadata/sense-inventories
+
 SRILM_PATH=/opt/srilm/bin/i686-m64
 MATLAB_PATH=/mnt/opt/matlab/linux64/R2011a/bin/matlab -nojvm -nodisplay
 SEED=1
@@ -82,5 +86,9 @@ FS_OPTIONS=-n ${FS_NSUB} -p ${FS_PSUB}
 # Creates matrix and %.words.gz
 %.wc.v.matrix.gz: %.sub.gz %.context.gz
 	create-wc-matrix.py $^ v | gzip > $@
+
+ontonotes-stats.txt:
+	ontonotes-stats.py ${ONTO_ANNOTATION} ${ONTO_SENSE_INVENTORY} | tee $@
+
 
 .SECONDARY:

@@ -14,10 +14,12 @@ from collections import defaultdict as dd
 from nltk.corpus.reader import BracketParseCorpusReader
 from itertools import count
 
-ONTO_PATH = sys.argv[1]
+if len(sys.argv) != 3:
+    msg = "Usage: {} annotation_path sense_inventory_path"
+    print >> sys.stderr, msg.format(sys.argv[0])
 
-inventory = os.path.join(ONTO_PATH, "data/files/data/english/metadata/sense-inventories/")
-annotations_path = os.path.join(ONTO_PATH, "data/files/data/english/annotations")
+annotations_path = sys.argv[1]
+inventory = sys.argv[2]
 
 # treebank has some peculiar mappings. fix dict above will convert them.
 fix = {'-LCB-': '{', '-RCB': '}', "n't": 'not', 'ca': 'can', 'wo': 'will', 
@@ -37,6 +39,7 @@ def get_sense_mappings():
     # ITA INF below: [#ofinstance, #total_ita_score, #of word <90, #total_score_for_<90]
     ita_inf = [0, 0, 0, 0] 
     nsense = [0, 0]
+    ita_less_90 = set()
     for num_processed, f in enumerate(inventory_files):
         fn = os.path.basename(f).replace('.xml', '')
         if num_processed % 1000 == 0:
@@ -63,6 +66,7 @@ def get_sense_mappings():
             if ita_score < 0.9:
                 ita_inf[2] += 1
                 ita_inf[3] += ita_score
+                ita_less_90.add(fn)
 
     ita_inf[1] = ita_inf[1] / ita_inf[0] # averaging.for all instance ita score
     ita_inf[3] = ita_inf[3] / ita_inf[2] # averaging.ita score for word lower than 0.9
@@ -75,13 +79,13 @@ def get_sense_mappings():
     with open('ontonotes-sensefreq-inventory.tab', 'w') as f:
         for key, val in version_list:
              f.write("{}\t{}\n".format(key, val))
-    return word_sense_dict
+    return word_sense_dict, ita_less_90
 
 def process_sense_annotation():
     
     print >> sys.stderr, "Sense Annotation processing started"
 
-    word_sense_dict = get_sense_mappings()
+    word_sense_dict, ita_less_90 = get_sense_mappings()
     sense_freq = dd(lambda : count(0)) # sense frequencies (wn3.0, wn2.0 etc) for annotation
     word_freq = dd(lambda : count(0)) # words frequency in annontation
     pos_dict = dd(lambda : count(0)) # pos distribution for annotation.
@@ -89,6 +93,7 @@ def process_sense_annotation():
     pattern = "*.sense"
     annotated_files = find_files(annotations_path, pattern)
     num_word_processed = 0 
+    ita_less90_count = 0
     for num_processed, annotated_file in enumerate(annotated_files):
         #fn = annotated_file.replace(annotations_path, "")
         for line in open(annotated_file):
@@ -104,6 +109,9 @@ def process_sense_annotation():
 
             version = word_sense_dict[word][sense_tag]
             sense_freq[version].next()
+
+            if word in ita_less_90:
+                ita_less90_count += 1
 
         if num_processed % 3000 == 0:
             print >> sys.stderr, "{} files processed".format(num_processed)
@@ -123,26 +131,27 @@ def process_sense_annotation():
     with open('ontonotes-sensefreq-annotation.tab', 'w') as f:
         for key, val in sensefreq_list:
              f.write("{}\t{}\n".format(key, val))
+    print "Number of words that have <90 ita score {} in annotated data".format(ita_less90_count)
     print >> sys.stderr, "Sense Annotation processing finished"
 
 def process_parse_annotation():
+    print >> sys.stderr, "Parsing started"
     reader = BracketParseCorpusReader(annotations_path, '.*parse')
     pos_set = set("NN VB RB JJ".split()) # word level pos tags for n, v, adv, adj.
     check_pos = lambda x: x in pos_set
     d = dd(lambda: count(0))
     for fileid in reader.fileids():
-        print fileid
+        #print fileid
         for sentence in reader.parsed_sents(fileid):
             for word, p in sentence.pos():
                 pos = p[0:2]
                 if p != '-NONE-' and check_pos(pos):
                      d[pos].next()
-        print d
-        exit()
-
+    print [(pos, c.next()) for pos, c in d.iteritems()]
+    print >> sys.stderr, "Parsing finished"
 
 def main():
-    #process_parse_annotation()
+    process_parse_annotation()
     process_sense_annotation()
 
 if __name__== "__main__":
