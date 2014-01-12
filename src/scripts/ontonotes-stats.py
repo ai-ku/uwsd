@@ -9,10 +9,10 @@ This module provides various statistics about Ontonotes.
 import sys
 import os
 from bs4 import BeautifulSoup
-import fnmatch
 from collections import defaultdict as dd
 from nltk.corpus.reader import BracketParseCorpusReader
 from itertools import count
+from nlp_utils import find_files
 
 if len(sys.argv) != 3:
     msg = "Usage: {} annotation_path sense_inventory_path"
@@ -25,11 +25,21 @@ inventory = sys.argv[2]
 fix = {'-LCB-': '{', '-RCB': '}', "n't": 'not', 'ca': 'can', 'wo': 'will', 
       "-LRB-": "(", "-RRB-": ")", "-RSB-": "]", "-LSB-": "[" }
 
-def find_files(topdir, pattern):
-    for path, dirname, filelist in os.walk(topdir):
-        for name in filelist:
-            if fnmatch.fnmatch(name, pattern):
-                yield os.path.join(path,name)
+
+def get_filtered_set(is_only_wn=True, ita_threshold=.85):
+    inventory_files = find_files(inventory, "*.xml")
+    for num_processed, f in enumerate(inventory_files):
+        fn = os.path.basename(f).replace('.xml', '')
+        if num_processed % 1000 == 0:
+            print >> sys.stderr, "{} files processed".format(num_processed)
+        soup = BeautifulSoup(open(f), 'xml')
+        ita = soup.findAll('ita') # inter-annotator agreement
+        if len(ita) != 0:
+            ita_score = float(ita[0]['ann_1_2_agreement'])
+            if ita_score > ita_threshold:
+                versions = [wn['version'] == '3.0' for wn in soup.findAll('wn')[:-1]]
+                if all(versions):
+                    print fn, versions, ita_score
 
 def get_sense_mappings():
     
@@ -86,7 +96,7 @@ def process_sense_annotation():
     print >> sys.stderr, "Sense Annotation processing started"
 
     word_sense_dict, ita_less_90 = get_sense_mappings()
-    sense_freq = dd(lambda : count(0)) # sense frequencies (wn3.0, wn2.0 etc) for annotation
+    sense_freq = dd(lambda : count(0)) # sense freqs (wn3.0, wn2.0 etc) for annotation
     word_freq = dd(lambda : count(0)) # words frequency in annontation
     pos_dict = dd(lambda : count(0)) # pos distribution for annotation.
     num_adjudicated = 0 # Number of instance that adjudicated
@@ -131,7 +141,8 @@ def process_sense_annotation():
     with open('ontonotes-sensefreq-annotation.tab', 'w') as f:
         for key, val in sensefreq_list:
              f.write("{}\t{}\n".format(key, val))
-    print "Number of words that have <90 ita score {} in annotated data".format(ita_less90_count)
+    m = "Number of words that have <90 ita score {} in annotated data"
+    print m.format(ita_less90_count)
     print >> sys.stderr, "Sense Annotation processing finished"
 
 def process_parse_annotation():
@@ -151,8 +162,9 @@ def process_parse_annotation():
     print >> sys.stderr, "Parsing finished"
 
 def main():
-    process_parse_annotation()
-    process_sense_annotation()
+    #process_parse_annotation()
+    #process_sense_annotation()
+    get_filtered_set()
 
 if __name__== "__main__":
     main()

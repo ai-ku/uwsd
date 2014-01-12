@@ -5,6 +5,8 @@ import math
 from collections import defaultdict as dd
 from itertools import izip
 import gzip
+import fnmatch
+import os
 
 __author__ = "Osman Baskaya"
 
@@ -17,6 +19,11 @@ def fopen(filename):
         func = open
     return func(filename)
 
+def find_files(topdir, pattern):
+    for path, dirname, filelist in os.walk(topdir):
+        for name in filelist:
+            if fnmatch.fnmatch(name, pattern):
+                yield os.path.join(path,name)
 
 def calc_perp(X, weight=None):
     

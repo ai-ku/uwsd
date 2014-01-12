@@ -1,6 +1,11 @@
 SHELL := /bin/bash
+
+### 1.1 BIN INSTALLATION
+bin:
+	cd ../bin; make
+
 ### PATH
-export PATH := .:${PATH}:/work/_upos_new/bin:.:${SRILM_PATH}
+export PATH := .:${PATH}:../bin:${SRILM_PATH}
 
 ### Ontonotes Details:
 ONTO_ANNOTATION=../data/ontonotes_v5/data/files/data/english/annotations
@@ -11,14 +16,6 @@ MATLAB_PATH=/mnt/opt/matlab/linux64/R2011a/bin/matlab -nojvm -nodisplay
 SEED=1
 
 #TEST=$(shell find ../data/pos-filtering/ -name "*.raw.gz" | sort)
-#ls *.key | sed 's|.key||g' > ../../../run/existed-twitter-pseudoword-list.txt
-
-
-### 1.3 INPUT files:
-TRAIN=/work/upos/data/wsj.tok.gz 
-TESTHEAD=1560570 # The first line of PTB-WSJ in TRAIN (same as first line of TEST)
-TESTTAIL=1613710 # The last line of PTB-WSJ in TRAIN (last line of TEST is 1612868)
-GETTRAIN=zcat ${TRAIN} | perl -ne 'print if ($$. < ${TESTHEAD} || $$. > ${TESTTAIL})'
 
 ### 2.2 SRILM options:
 LM_NGRAM=4 # n-gram order
@@ -79,16 +76,36 @@ FS_OPTIONS=-n ${FS_NSUB} -p ${FS_PSUB}
 	zcat $@ | wc
 	zcat $*.context.gz | wc
 
-# Creates matrix and %.words.gz
+# Creates matrix and %.words.n.gz
 %.wc.n.matrix.gz: %.sub.gz %.context.gz
 	create-wc-matrix.py $^ n | gzip > $@
 
-# Creates matrix and %.words.gz
+# Creates matrix and %.words.v.gz
 %.wc.v.matrix.gz: %.sub.gz %.context.gz
 	create-wc-matrix.py $^ v | gzip > $@
 
 ontonotes-stats.txt:
-	ontonotes-stats.py ${ONTO_ANNOTATION} ${ONTO_SENSE_INVENTORY} | tee $@
+	ontonotes-stats.py ${ONTO_ANNOTATION} ${ONTO_SENSE_INVENTORY} #| tee $@
+
+words-filtered%.txt:
+	filtering.py ${ONTO_ANNOTATION} ${ONTO_SENSE_INVENTORY} 0 $* > $@
+	wc $@
+
+### Stemming related ###
+mf-stems.%: # most frequent stems for noun verb etc
+	cat celex/stemmer.out | awk '{if($$3=="$*" || $$3=="x$*")print $$1,$$2,$$5;}' > tmp
+	cat celex-missing-verbs | awk '{print $$1,$$2,1;}' >> tmp
+	stem_table.py <(cat tmp | sort) > $@
+	rm tmp
+
+coverage.%.N.txt: %.aw.tw.all.gz words-filtered0.txt mf-stems.N
+	coverage.py $^
+
+coverage.%.V.txt: %.aw.tw.all.gz words-filtered0.txt mf-stems.V
+	coverage.py $^
+
+ontonotes.gz: words-filtered.txt 
+	onto-testset-create.py $< ${ONTO_ANNOTATION}
 
 
 .SECONDARY:
