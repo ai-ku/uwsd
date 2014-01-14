@@ -15,20 +15,19 @@ from collections import defaultdict as dd
 from itertools import izip
 
 
-if len(sys.argv) != 3:
+if len(sys.argv) != 4:
     m = "Usage: {} word_list_file annotated_corpus_path"
     print >> sys.stderr, m.format(sys.argv[0])
     exit(-1)
 
 words = set(open(sys.argv[1]).read().split('\n'))
 path = sys.argv[2] # annotation path
+mapping_file = sys.argv[3] # used for that 
 
 extension = "*.sense"
 fix = {'-LCB-': '{', '-RCB': '}', "n't": 'not', 'ca': 'can', 'wo': 'will', 
       "-LRB-": "(", "-RRB-": ")", "-RSB-": "]", "-LSB-": "[" }
 
-#path = "../data/ontonotes_v5/data/files/data/english/annotations/bc/p2.5_a2e/00/"
-annotated_files = find_files(path, extension)
 
 def get_parse_file_dict(annotated_files, words=words):
     d = dd(lambda : dd(list))
@@ -49,10 +48,10 @@ def write2file(files, lists):
 
 def create_files(d):
     reader = BracketParseCorpusReader(path, ".*parse")
-    print reader.fileids()[0]
     print >> sys.stderr, "Reader is created now"
     c = 0
-    filetypes = "pos clean-sent aw.tw.gz sense".split()
+    #filetypes = "pos clean-sent aw.tw sense".split()
+    filetypes = "pos clean-sent sense".split()
     files = map(lambda x: gzip.open("ontonotes.%s.gz" % x, 'w'), filetypes)
     for parse_file, sentids in d.viewitems():
         parse_file = '/'.join(parse_file.split('/')[-4:])
@@ -73,10 +72,13 @@ def create_files(d):
                 w = w.replace('-', '.')
                 mm = "line-{}\t{}\t{}\t{}\t{}\t{}\t{}".format(c, t, c, tid, p, w, tid)
                 ss = "line-{}\t{}\t{}\t{}".format(c, t, w, senseid)
-                write2file(files, [clean_pos_list, clean_sent_list, [mm], [ss]])
+                print mm
+                write2file(files, [clean_pos_list, clean_sent_list, [ss]])
                 c += 1
     map(lambda f: f.close(), files)
 
+#path = "../data/ontonotes_v5/data/files/data/english/annotations/bc/p2.5_a2e/00/"
+annotated_files = find_files(path, extension)
 d = get_parse_file_dict(annotated_files, words)
 print >> sys.stderr, "Dict created: # of keys: {}".format(len(d))
 create_files(d)

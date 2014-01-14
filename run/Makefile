@@ -88,8 +88,11 @@ ontonotes-stats.txt:
 	ontonotes-stats.py ${ONTO_ANNOTATION} ${ONTO_SENSE_INVENTORY} #| tee $@
 
 words-filtered%.txt:
-	filtering.py ${ONTO_ANNOTATION} ${ONTO_SENSE_INVENTORY} 0 $* > $@
+	type-filtering.py ${ONTO_ANNOTATION} ${ONTO_SENSE_INVENTORY} 1 $* > $@
 	wc $@
+
+onto-wn%-mapping.txt: words-filtered.txt
+	onto-wn-mapper.py ${ONTO_SENSE_INVENTORY} $< $* > $@
 
 ### Stemming related ###
 mf-stems.%: # most frequent stems for noun verb etc
@@ -104,8 +107,12 @@ coverage.%.N.txt: %.aw.tw.all.gz words-filtered0.txt mf-stems.N
 coverage.%.V.txt: %.aw.tw.all.gz words-filtered0.txt mf-stems.V
 	coverage.py $^
 
-ontonotes.gz: words-filtered.txt 
-	onto-testset-create.py $< ${ONTO_ANNOTATION}
+ontonotes.aw.tw.gz: words-filtered.txt 
+	onto-testset-create.py $< ${ONTO_ANNOTATION} | gzip > $@
+
+onto.context.gz: ontonotes.aw.tw.gz ontonotes.clean-sent.gz
+	extract-test-context.py $^ 2>onto.context.err | gzip > $@ 
+
 
 
 .SECONDARY:

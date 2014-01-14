@@ -3,7 +3,9 @@
 __author__ = "Osman Baskaya"
 
 """
-
+Filter the inventory words that two constraints:
+ - ITA degree
+ - Sense Inventory (take words that have only wn 3.0 senses)
 """
 
 import sys
@@ -28,7 +30,7 @@ threshold = float(sys.argv[4]) / 100
 
 print >> sys.stderr, is_only_wn, threshold
 
-def get_filtered_set(is_only_wn=True, ita_threshold=.85):
+def get_filtered_set(is_only_wn, ita_threshold):
     inventory_files = find_files(inventory, "*.xml")
     for num_processed, f in enumerate(inventory_files):
         fn = os.path.basename(f).replace('.xml', '')

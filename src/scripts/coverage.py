@@ -3,7 +3,8 @@
 __author__ = "Osman Baskaya"
 
 """
-
+Coverage tests.
+-How many words in Ontonotes are also in the test data (SensEval, SemEval)
 """
 
 import sys
