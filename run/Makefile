@@ -94,6 +94,7 @@ words-filtered%.txt:
 onto-wn%-mapping.txt: words-filtered.txt
 	onto-wn-mapper.py ${ONTO_SENSE_INVENTORY} $< $* > $@
 
+
 ### Stemming related ###
 mf-stems.%: # most frequent stems for noun verb etc
 	cat celex/stemmer.out | awk '{if($$3=="$*" || $$3=="x$*")print $$1,$$2,$$5;}' > tmp
@@ -107,12 +108,16 @@ coverage.%.N.txt: %.aw.tw.all.gz words-filtered0.txt mf-stems.N
 coverage.%.V.txt: %.aw.tw.all.gz words-filtered0.txt mf-stems.V
 	coverage.py $^
 
-ontonotes.aw.tw.gz: words-filtered.txt 
-	onto-testset-create.py $< ${ONTO_ANNOTATION} | gzip > $@
+#ontonotes.aw.tw.gz: words-filtered.txt onto-wn3.0-mapping.txt
+	#onto-testset-create.py $^ ${ONTO_ANNOTATION} | gzip > $@
 
-onto.context.gz: ontonotes.aw.tw.gz ontonotes.clean-sent.gz
-	extract-test-context.py $^ 2>onto.context.err | gzip > $@ 
+### Ontonotes Test set
 
+ontonotes.all.gz: 
+	ontonotes-preprocess.py ${ONTO_ANNOTATION} ${ONTO_SENSE_INVENTORY} | gzip > $@
 
+on.all.context.gz: dummy.all.gz
+	zcat dummy.all.gz | cut -f4,8,9 | extract-test-context.py
+	#extract-test-context.py $^ 2>onto.context.err | gzip > $@ 
 
 .SECONDARY:

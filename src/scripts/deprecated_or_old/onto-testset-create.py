@@ -21,8 +21,8 @@ if len(sys.argv) != 4:
     exit(-1)
 
 words = set(open(sys.argv[1]).read().split('\n'))
-path = sys.argv[2] # annotation path
-mapping_file = sys.argv[3] # used for that 
+mapping_file = sys.argv[2] # used for that 
+path = sys.argv[3] # annotation path
 
 extension = "*.sense"
 fix = {'-LCB-': '{', '-RCB': '}', "n't": 'not', 'ca': 'can', 'wo': 'will', 
@@ -80,5 +80,8 @@ def create_files(d):
 #path = "../data/ontonotes_v5/data/files/data/english/annotations/bc/p2.5_a2e/00/"
 annotated_files = find_files(path, extension)
 d = get_parse_file_dict(annotated_files, words)
+print d.keys()[0]
+print d[d.keys()[0]]
+exit()
 print >> sys.stderr, "Dict created: # of keys: {}".format(len(d))
 create_files(d)

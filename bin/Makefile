@@ -30,7 +30,7 @@ dists: check
 	test -e $@ || ln -s ../src/dist/dists .
 
 scripts: check
-	test -e $@ || ln -s ../src/scripts/* .
+	test -e $@ || ln -s ../src/scripts/* ../run/
 
 scode: check
 	test -e ../src/scode || (cd ../src/ ; git clone ${SCODE_GIT_REPO} ; git checkout ${SCODE_GIT_TAG}) 

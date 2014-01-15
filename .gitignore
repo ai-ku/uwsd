@@ -5,6 +5,7 @@ run/dummy*
 run/trash/*
 run/*.class
 run/old/
+run/*py
 glookup/
 data/
 

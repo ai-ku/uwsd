@@ -12,7 +12,6 @@ import sys
 import os
 from bs4 import BeautifulSoup
 from collections import defaultdict as dd
-from nltk.corpus.reader import BracketParseCorpusReader
 from itertools import count
 from nlp_utils import find_files
 
