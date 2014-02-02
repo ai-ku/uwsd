@@ -3,21 +3,22 @@
 
 __author__ = "Osman Baskaya"
 
-semeval10 = "../data/semeval10/aw/test/English/EnglishAW.test.xml"
-semeval07 = "../data/semeval07/all-words/english-all-words.test.xml"
-senseval3 = "../data/senseval3/english-all-words.xml"
-senseval2 = "../data/senseval2/english-all-words/test/eng-all-words.test.xml"
+s10aw = "../data/semeval10/aw/test/English/EnglishAW.test.xml"
+s10wsi = "../data/semeval10/wsi"
+s07aw = "../data/semeval07/all-words/english-all-words.test.xml"
+s3aw = "../data/senseval3/english-all-words.xml"
+s2aw = "../data/senseval2/english-all-words/test/eng-all-words.test.xml"
 
 def get_dataset_path(dataset):
     path = None
-    if dataset == 'semeval07':
-        path = semeval07
-    elif dataset == 'senseval3':
-        path = senseval3
-    elif dataset == 'senseval2':
-        path = senseval2
-    elif dataset == 'semeval10':
-        path = semeval10
+    if dataset == 's07aw':
+        path = s07aw
+    elif dataset == 's3aw':
+        path = s3aw
+    elif dataset == 's2aw':
+        path = s2aw
+    elif dataset == 's10aw':
+        path = s10aw
     return path
 
 

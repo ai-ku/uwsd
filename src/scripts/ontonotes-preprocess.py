@@ -9,9 +9,6 @@ needed for constructing different test sets
 
 import sys
 import os
-
-import sys
-import os
 from bs4 import BeautifulSoup
 from collections import defaultdict as dd
 from nltk.corpus.reader import BracketParseCorpusReader
@@ -49,7 +46,7 @@ def get_inventory_info():
             mapping = sense.findAll('mappings')[0]
             wn = mapping.findAll('wn')[0]
             version = wn['version']
-            wn_senses = wn.text
+            wn_senses = wn.text.strip()
             #FIXME: None of above sense should be mapped to 3.0 first!
             if sense_name == NONE_OF_ABOVE_SENSE:
                 wn_senses = "no_lexicon_sense"
@@ -66,7 +63,7 @@ def get_inventory_info():
 def annotation_process():
     d = get_inventory_info()
     annotated_files = find_files(annotations_path, "*.sense")
-    pos_file = gzip.open('ontonotes.pos.gz', 'w')
+    pos_file = gzip.open('on.pos.gz', 'w')
     inst_num_dict = dd(lambda: count(1))
     for num_processed, fn in enumerate(annotated_files):
         if num_processed % 1000 == 0:
@@ -74,25 +71,28 @@ def annotation_process():
         directory = os.path.dirname(fn)
         basename = os.path.basename(fn)
         reader = BracketParseCorpusReader(directory, basename.replace('.sense', '.parse'))
-        assert len(reader.fileids()) == 1
         fileid = reader.fileids()[0]
+        sentences = dict()
+        parsed_sents = reader.parsed_sents(fileid)
         for line in open(fn):
             line = line.split()
             tw = line[3]
             onto_sense = line[-1]
             sent_id, tok_id = int(line[1]), int(line[2])
-            sentence = reader.parsed_sents(fileid)[sent_id]
-            clean_sent = []
-            clean_pos = []
-            sent = []
-            for word, p in sentence.pos():
-                sent.append(word)
-                if p != '-NONE-':
-                    if word in fix:
-                        word = fix[word]
-                    clean_sent.append(word)
-                    clean_pos.append(p)
-
+            stuple = sentences.setdefault(sent_id, None)
+            if stuple is None:
+                sentence = parsed_sents[sent_id]
+                clean_sent = []
+                clean_pos = []
+                for word, p in sentence.pos():
+                    if p != '-NONE-':
+                        if word in fix:
+                            word = fix[word]
+                        clean_sent.append(word)
+                        clean_pos.append(p)
+                sentences[sent_id] = (clean_sent, clean_pos)
+            else:
+                clean_sent, clean_pos = stuple
             lexicon_senses, version, ita = d[tw][onto_sense]
             w = tw.replace('-', '.') # following the convention of SemEval
             m = "{}\t{}.on.{}\t{}-{}-{}\t{}-{}\t{}\t{}\t{}\t{}\t{}"

@@ -2,27 +2,30 @@
 
 import gzip
 from itertools import count, izip
-import re
 import sys
-#import os
+from collections import defaultdict as dd
 
-lemma_pos = {}
-lemma_count = {}
+tw_list = open(sys.argv[4]).read().split()
+print >> sys.stderr, "Target word list length: {}".format(len(tw_list))
+
+lemma_pos = dd(lambda: set())
+lemma_count = dd(lambda: dict())
 lemma_set = set()
-for arg in sys.argv[4:]:
-    #FIXME: Bug var burada. Ayni lemma'ya sahip kelimeler var.
-    # Onlari eziyor. (trace.n, trace.v; book.n, book.v)
 
-    match = re.search("(\w+)\.raw.gz$", arg)
-    lemma = match.group(1)
-    pos = 'N'
-    lemma_pos[lemma + pos] = pos
-    lemma_count[lemma + pos] =  count(1)
-    lemma_set.add(match.group(1))
+INSTANCE_LIMIT = 1000000 # do not go beyond 1M instance
+
+for  tw in tw_list:
+    lemma, pos = tw.rsplit('.', 1)
+    lemma_pos[lemma].add(pos)
+    lemma_count[lemma][pos] = 0
+    lemma_set.add(lemma)
 
 f_tok = gzip.open(sys.argv[1])
+print >> sys.stderr, "%s loaded" % sys.argv[1]
 f_pos = gzip.open(sys.argv[2])
+print >> sys.stderr, "%s loaded" % sys.argv[2]
 f_lem = gzip.open(sys.argv[3])
+print >> sys.stderr, "%s loaded" % sys.argv[3]
 
 for l_tok, l_pos, l_lem, line in izip(f_tok, f_pos, f_lem, count(1)):
     l_tok = l_tok.split()
@@ -35,9 +38,12 @@ for l_tok, l_pos, l_lem, line in izip(f_tok, f_pos, f_lem, count(1)):
         continue
     for i in xrange(len(l_lem)):
         if l_lem[i] in lemma_set:
-            lempos = l_lem[i] + l_pos[i][0]
-            if lempos in lemma_pos:
-                print "%s <%s.basecorpus.%d> %s" % (' '.join(l_tok[i - 3:i]),
-                                            l_lem[i],
-                                            lemma_count[lempos].next(),
+            lemma = l_lem[i]
+            pos = l_pos[i][0].lower()
+            if pos in lemma_pos[lemma]:
+                lemma_count[lemma][pos] += 1
+                if lemma_count[lemma][pos] < INSTANCE_LIMIT:
+                    print "%s <%s.%s.ukwac.%d> %s" % (' '.join(l_tok[max(0, i - 3):i]),
+                                                lemma, pos,
+                                                lemma_count[lemma][pos],
                                             ' '.join(l_tok[i + 1:i + 4]))

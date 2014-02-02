@@ -20,14 +20,14 @@ if len(sys.argv) != 2:
 dataset = sys.argv[1]
 dataset_path = get_dataset_path(dataset)
 
-if dataset == "semeval07":
+if dataset == "s07aw":
     line_add = 2
 else:
     line_add = 1
 
 soup = BeautifulSoup(open(dataset_path), 'xml')
 regex = re.compile('(\w+)\.s(\d+)\.t(\d+)')
-if dataset == 'semeval10':
+if dataset == 's10aw':
     sentences = soup.find_all('s')
     c = 0
     for sentence in sentences:
