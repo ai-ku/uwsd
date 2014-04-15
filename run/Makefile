@@ -7,7 +7,7 @@ bin:
 
 ### PATH
 SRILM_PATH=/opt/srilm/bin/i686-m64
-export PATH := .:${PATH}:../bin:${SRILM_PATH}
+export PATH := .:${PATH}:../bin:${SRILM_PATH}:/scratch/1/obaskaya/mapping-impact/run
 
 ### Ontonotes Details:
 ONTO_ANNOTATION=../data/ontonotes_v5/data/files/data/english/annotations
@@ -148,6 +148,10 @@ export OMP_NUM_THREADS=10
 %-tw-list.txt: %.all.gz
 	zcat $< | cut -f1 | sort | uniq > $@
 
+# IAA based filtering for ontonotes
+on-tw-list%.txt: on.all.gz 
+	zcat $< | awk -F '\t' '{if ($$7 >= $*) printf("%s\n", $$1)}' | sort | uniq > $@
+
 %.train.context.gz: ukwac.tok.gz ukwac.pos.gz ukwac.lemma.gz %-tw-list.txt
 	extract-train-context.py $^ | gzip > $@
 
@@ -194,7 +198,12 @@ aiku/%/pairs: aiku/%/sub
 
 ### POS-BASED EXPERIMENTS
 
-# SCODE for POS-Based experiments
+## Key creation. We are using instances whose IAA >= 90
+../keys/on.%-0.9.key: on.all.gz
+	zcat $< | grep -P "\.$*\t" | awk -F '\t' '{if ($$7 >= 0.9)\
+	printf("%s %s %s\n", $$1, $$2, $$4)}' | tee >(wc -l >&2) > $@
+
+## SCODE for POS-Based experiments 
 SC_OPTIONS=-s ${SEED} -v 
 aiku/%/scode-pos/verb.scode.gz: aiku/%/pairs %.verb.pairs.gz
 	-mkdir aiku/$*/scode-pos/
@@ -204,79 +213,129 @@ aiku/%/scode-pos/noun.scode.gz: aiku/%/pairs %.noun.pairs.gz
 	-mkdir aiku/$*/scode-pos/
 	zcat $</*.n.pairs.gz $*.noun.pairs.gz | scode ${SC_OPTIONS} | gzip > $@
 
+## ITA=0.9 || S-CODE for POS-Based experiments. 
+on.pairs0.9.gz: on.all.gz # list of pairs that have higher IAA than 0.9
+	zcat $< | awk -F '\t' '{if ($$7 >= 0.9) printf("%s\t<%s>\n", $$1, $$2)}' |\
+	tee >(wc -l >&2) | gzip > $@
+
+on.%.pairs-0.9.gz: on.pairs0.9.gz
+	zcat $< | grep -P "\.$*\t" | pair-filtering.py aiku/on/pairs | tee >(gzip > $@) | wc -l
+
+aiku/%/scode-pos-90/verb.scode.gz: on.v.pairs-0.9.gz %.verb.pairs.gz
+	-mkdir aiku/$*/scode-pos-90/
+	zcat $< $*.verb.pairs.gz | scode ${SC_OPTIONS} | gzip > $@
+
+aiku/%/scode-pos-90/noun.scode.gz: on.n.pairs-0.9.gz %.noun.pairs.gz
+	-mkdir aiku/$*/scode-pos-90/
+	zcat $< $*.noun.pairs.gz | scode ${SC_OPTIONS} | gzip > $@
+
 ### Clustering substitute word vectors (Y-based approach) ###
 
-KM_OPTIONS=-r 8 -l -w -v -s ${SEED}
-aiku/on/kmeans-pos/n.Yv.km.%.gz: aiku/on/scode-pos/noun.scode.gz
-	-mkdir aiku/on/kmeans-pos/
+KM_OPTIONS=-r 64 -l -w -v -s ${SEED}
+aiku/on/km-p/n.Yv.km.%.gz: aiku/on/scode-pos-90/noun.scode.gz
+	-mkdir aiku/on/km-p/
 	zcat $< | perl -ne 'print if s/^1://' | wkmeans ${KM_OPTIONS} -k $* |\
 	gzip > $@
 
-aiku/on/kmeans-pos/v.Yv.km.%.gz: aiku/on/scode-pos/verb.scode.gz
-	-mkdir aiku/on/kmeans-pos/
+aiku/on/km-p/v.Yv.km.%.gz: aiku/on/scode-pos-90/verb.scode.gz
+	-mkdir aiku/on/km-p/
 	zcat $< | perl -ne 'print if s/^1://' | wkmeans ${KM_OPTIONS} -k $* |\
 	gzip > $@
 
-scores/on.n.Yv.%.score: aiku/on/pairs aiku/on/kmeans-pos/n.Yv.km.%.gz ../keys/on.n.keys
-	zcat $</*.n.pairs.gz |\
-	find-sense-test.py aiku/on/kmeans-pos/n.Yv.km.$*.gz > ans1.k=$*.tmp
-	java -jar ${SS_JAR} -s ../keys/on.n.keys ans1.k=$*.tmp | tee $@ | tail -2
+scores/on.n.Yv.%.score: on.n.pairs-0.9.gz aiku/on/km-p/n.Yv.km.%.gz ../keys/on.n-0.9.key
+	zcat $< | find-sense-test.py aiku/on/km-p/n.Yv.km.$*.gz > ans1.k=$*.tmp
+	java -jar ${SS_JAR} -s ../keys/on.n-0.9.key ans1.k=$*.tmp | tee $@ | tail -2
 	#rm ans1.tmp
 
-scores/on.v.Yv.%.score: aiku/on/pairs aiku/on/kmeans-pos/v.Yv.km.%.gz ../keys/on.n.keys
-	zcat $</*.v.pairs.gz |\
-	find-sense-test.py aiku/on/kmeans-pos/v.Yv.km.$*.gz > ans2.k=$*.tmp
-	java -jar ${SS_JAR} -s ../keys/on.v.keys ans2.k=$*.tmp | tee $@ | tail -2
+scores/on.v.Yv.%.score: on.v.pairs-0.9.gz aiku/on/km-p/v.Yv.km.%.gz ../keys/on.v-0.9.key
+	zcat $< | find-sense-test.py aiku/on/km-p/v.Yv.km.$*.gz > ans2.k=$*.tmp
+	java -jar ${SS_JAR} -s ../keys/on.v-0.9.key ans2.k=$*.tmp | tee $@ | tail -2
 	#rm ans2.tmp
 
 ### Clustering concatenation of the target word and subs vector: (XY_v vectors) ###
 
-aiku/on/kmeans-pos/v.XYv.km.%.gz: aiku/on/scode-pos/verb.scode.gz aiku/on/pairs/
-	concat-XY_v.py $< <(zcat aiku/on/pairs/*.v.pairs.gz) |\
-	wkmeans ${KM_OPTIONS} -k $* | gzip > $@
+aiku/on/km-p/v.XYv.km.%.gz: aiku/on/scode-pos-90/verb.scode.gz on.v.pairs-0.9.gz
+	concat-XY_v.py $^ | wkmeans -r 8 -l -w -v -s ${SEED} -k $* | gzip > $@
 
-aiku/on/kmeans-pos/n.XYv.km.%.gz: aiku/on/scode-pos/noun.scode.gz aiku/on/pairs/
-	concat-XY_v.py $< <(zcat aiku/on/pairs/*.n.pairs.gz) |\
-	wkmeans ${KM_OPTIONS} -k $* | gzip > $@
+aiku/on/km-p/n.XYv.km.%.gz: aiku/on/scode-pos-90/noun.scode.gz on.n.pairs-0.9.gz
+	concat-XY_v.py $^ | wkmeans -r 8 -l -w -v -s ${SEED} -k $* | gzip > $@
 
-scores/on.v.XYv.%.score: aiku/on/kmeans-pos/v.XYv.km.%.gz ../keys/on.v.keys
+scores/on.v.XYv.%.score: aiku/on/km-p/v.XYv.km.%.gz ../keys/on.v-0.9.key
 	zcat $< | find-sense-XY_v.py > ans3.k=$*.tmp
-	java -jar ${SS_JAR} -s ../keys/on.v.keys ans3.k=$*.tmp | tee $@ | tail -2
+	java -jar ${SS_JAR} -s ../keys/on.v-0.9.key ans3.k=$*.tmp | tee $@ | tail -2
 	#rm ans3.tmp
 
-scores/on.n.XYv.%.score: aiku/on/kmeans-pos/n.XYv.km.%.gz ../keys/on.n.keys
+scores/on.n.XYv.%.score: aiku/on/km-p/n.XYv.km.%.gz ../keys/on.n-0.9.key
 	zcat $< | find-sense-XY_v.py  > ans4.k=$*.tmp
-	java -jar ${SS_JAR} -s ../keys/on.n.keys ans4.k=$*.tmp | tee $@ | tail -2
+	java -jar ${SS_JAR} -s ../keys/on.n-0.9.key ans4.k=$*.tmp | tee $@ | tail -2
 	#rm ans4.tmp
 
-### Clustering concatenation of the target word and sum of subs vectors: (XY_vbar vectors)
+### Clustering concatenation of the target word and sum of subs vectors: (XYbar vectors)
 
-aiku/on/kmeans-pos/v.XYvbar.km.%.gz: aiku/on/scode-pos/verb.scode.gz aiku/on/pairs/
-	concat-XY_vb.py $< <(zcat aiku/on/pairs/*.v.pairs.gz) |\
-	wkmeans ${KM_OPTIONS} -k $* | gzip > $@
+aiku/on/km-p/v.XYb.km.%.gz: aiku/on/scode-pos-90/verb.scode.gz on.v.pairs-0.9.gz
+	concat-XYb.py $^ | wkmeans ${KM_OPTIONS} -k $* | gzip > $@
 
-aiku/on/kmeans-pos/n.XYvbar.km.%.gz: aiku/on/scode-pos/noun.scode.gz aiku/on/pairs/
-	concat-XY_vb.py $< <(zcat aiku/on/pairs/*.n.pairs.gz) |\
-	wkmeans ${KM_OPTIONS} -k $* | gzip > $@
+aiku/on/km-p/n.XYb.km.%.gz: aiku/on/scode-pos-90/noun.scode.gz on.n.pairs-0.9.gz
+	concat-XYb.py $^ | wkmeans ${KM_OPTIONS} -k $* | gzip > $@
 
-scores/on.v.XYvbar.%.score: aiku/on/kmeans-pos/v.XYvbar.km.%.gz ../keys/on.v.keys
-	zcat $< | find-sense-XY_vbar.py > ans5.k=$*.tmp
-	java -jar ${SS_JAR} -s ../keys/on.v.keys ans5.k=$*.tmp | tee $@ | tail -2
+scores/on.v.XYb.%.score: aiku/on/km-p/v.XYb.km.%.gz ../keys/on.v-0.9.key
+	zcat $< | find-sense-XYb.py > ans5.k=$*.tmp
+	java -jar ${SS_JAR} -s ../keys/on.v-0.9.key ans5.k=$*.tmp | tee $@ | tail -2
 	#rm ans3.tmp
 
-scores/on.n.XYvbar.%.score: aiku/on/kmeans-pos/n.XYvbar.km.%.gz ../keys/on.n.keys
-	zcat $< | find-sense-XY_vbar.py > ans6.k=$*.tmp
-	java -jar ${SS_JAR} -s ../keys/on.n.keys ans6.k=$*.tmp | tee $@ | tail -2
+scores/on.n.XYb.%.score: aiku/on/km-p/n.XYb.km.%.gz ../keys/on.n-0.9.key
+	zcat $< | find-sense-XYb.py > ans6.k=$*.tmp
+	java -jar ${SS_JAR} -s ../keys/on.n-0.9.key ans6.k=$*.tmp | tee $@ | tail -2
 
 on.%.tab: scores
 	for p in v n; do \
 		for i in 3 8 16 25 32 64 125 250 500; do \
-			echo -n $$i"-"$$p"	"; cat $</on.$$p.$*.$$i.score | tail -2 | head -1 | cut -f4;\
+		 echo -n $$i"-"$$p"	"; cat $</on.$$p.$*.$$i.score | tail -2 | head -1 | cut -f4;\
 	done; done | tee $@
 
+### SVM based mapping experiments ###
+
+../keys/gold/%: ../keys/%.keys
+	gold-key-splitter.py $< $@
+
+#make n-svm-cv-exp DATASET=aiku/on/
+%-svm-cv-exp: ${DATASET}
+	cd ${DATASET}; make $*-svm-cv-exp 
+
 ### BASELINE
-
 on.mfs.baseline.txt: on.all.gz
-	zcat $< | cut -f4  | mfs-baseline.py | tee $@
-	#java -jar ${SS_JAR} -n ../keys/on.v.keys mfs.v.ans
+	zcat $< | cut -f4 | mfs-baseline.py | tee $@
 
+on.random%.n.baseline.txt: ../keys/on.n-0.9.key
+	random-baseline.py $< $* > $@.tmp
+	java -jar ${SS_JAR} -s ../keys/on.n-0.9.key $@.tmp | tee $@ | tail -2 | head -1
+	#rm $@.tmp
+
+on.random%.v.baseline.txt: ../keys/on.v-0.9.key
+	random-baseline.py $< $* > $@.tmp
+	java -jar ${SS_JAR} -s ../keys/on.v-0.9.key $@.tmp | tee $@ | tail -2 | head -1
+	#rm $@.tmp
+
+on.%.1s1i-bs.txt: ../keys/on.%-0.9.key
+	cat $< | 1inst1sense-baseline.py > $@
+
+### IMS ###
+
+#make ims/on/test-data
+ims/%/testing-data: %.all.gz 
+	-mkdir -p $@
+	zcat $< | ims-data-create.py $@
+
+ims-wordlist.txt:
+	cd ims/ims/models/; ls *.model.gz | sed 's|.model.gz||g' | sort > ../../../$@
+
+ims-tw-test.txt: ims-wordlist.txt on-tw-list.txt
+	comm -12 $^ | sort | uniq > $@
+	wc $@
+
+ims-tw-test0.9.txt: ims-wordlist.txt on-tw-list0.9.txt
+	comm -12 $^ | sort | uniq > $@
+	wc $@
+
+ims-run-on: dummy
+	cd ims/ims/; test-ims.sh $<

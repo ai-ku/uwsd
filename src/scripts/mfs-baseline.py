@@ -29,7 +29,7 @@ for pw in d:
     key = max(d[pw], key=lambda x: d[pw][x])
     for line in lines[pw]:
         line = line.split()
-        print "{} {}".format(' '.join(line[:2]), key)
+        #print "{} {}".format(' '.join(line[:2]), key)
     key_nums = d[pw].values()
     total = sum(key_nums)
     num_mfs = max(key_nums)
@@ -40,5 +40,3 @@ print >> sys.stderr, "Total number of pseudowords: {}".format(len(d))
 print >> sys.stderr, "MFS Score: {}".format(correct / float(num_inst))
 print >> sys.stderr, "{} correct of {}".format(correct, num_inst)
 print >> sys.stderr, "Avg. correct num of instances {}".format(correct / float(len(d)))
-
-
