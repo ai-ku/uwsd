@@ -5,6 +5,7 @@ __author__ = "Osman Baskaya"
 import sys
 from collections import defaultdict as dd
 import os
+import re
 
 
 """struggle.n      struggle.n.on.1 bn/nbc/00/nbc_0039@0039@nbc@bn@en@on-0-6        struggle.n-1    1,3     3.0     0.909090909091  6       And one of the longest running struggles for international justice reached a milestone today of sorts , when a Scottish court , meeting in the Netherlands , finally officially found someone guilty in the 1988 bombing that brought down Pan Am Flight 103 ."""
@@ -27,7 +28,13 @@ for line in sys.stdin:
     inst_id = line[1]
     key =  line[3]
     token_id = int(line[7])
-    context = line[8].split()
+    context = line[8].replace('&', '&amp;')
+    context = context.replace('<', '')
+    context = context.replace('>', '')
+    match = re.match('.*(<(http.*)>)', context)
+    if match:
+        context = context.replace(match.group(1), match.group(2))
+    context = context.split()
     context[token_id] = "<head>{}</head>".format(context[token_id])
     #print lexelt, '\n', inst_id, '\n', key, '\n', token_id, '\n', context[token_id], '\n'
     # xml entry

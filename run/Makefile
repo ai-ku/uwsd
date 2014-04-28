@@ -337,5 +337,5 @@ ims-tw-test0.9.txt: ims-wordlist.txt on-tw-list0.9.txt
 	comm -12 $^ | sort | uniq > $@
 	wc $@
 
-ims-run-on: dummy
+ims-run-on: dummy #ims-tw-test.txt
 	cd ims/ims/; test-ims.sh $<
