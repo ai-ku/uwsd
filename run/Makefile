@@ -18,6 +18,7 @@ MATLAB_PATH=/mnt/opt/matlab/linux64/R2011a/bin/matlab -nojvm -nodisplay
 SEED=1
 SS_JAR=../bin/single-sense-precision.jar
 NG_JAR=../bin/weighted-ndcg.jar
+PFS_JAR=../bin/pairedFScore.jar
 
 #TEST=$(shell find ../data/pos-filtering/ -name "*.raw.gz" | sort)
 
@@ -139,11 +140,11 @@ on.context.gz: on.all.gz
 FS_NSUB=100 # go until you have this many substitutes
 FS_PSUB=1.0 # or this much cumulative probability
 FS_OPTIONS=-n ${FS_NSUB} -p ${FS_PSUB}
-export OMP_NUM_THREADS=10
+export OMP_NUM_THREADS=24
 
 %.sub.gz: %.context.gz
 	zcat $< | fastsubs-omp ${FS_OPTIONS} ${LM} | grep -P "^<.*\d>" | gzip > $@
-	zwc $<; zwc $@
+	zcat $< | wc; zcat $@ | wc
 
 %-tw-list.txt: %.all.gz
 	zcat $< | cut -f1 | sort | uniq > $@
@@ -165,6 +166,15 @@ sampled.tok1.gz sampled.pos1.gz: tok1.gz pos1.gz lemma1.gz
 
 verb.sub.gz noun.sub.gz adj.sub.gz: global.sub.gz
 	zcat $< | ./split-vnj.py sampled.lemma1.gz sampled.pos1.gz
+
+verb.pairs.gz: verb.sub.gz
+	perl -le 'print "$<" for 1..100' | xargs cat | wordsub -s ${SEED} | gzip > $@
+
+noun.pairs.gz: noun.sub.gz
+	perl -le 'print "$<" for 1..100' | xargs cat | wordsub -s ${SEED} | gzip > $@
+
+adj.pairs.gz: adj.sub.gz
+	perl -le 'print "$<" for 1..100' | xargs cat | wordsub -s ${SEED} | gzip > $@
 
 %.noun.pairs.gz: %.sub.gz
 	zcat $< | grep -P "^<\w+\.n" > n.tmp
@@ -205,13 +215,13 @@ aiku/%/pairs: aiku/%/sub
 
 ## SCODE for POS-Based experiments 
 SC_OPTIONS=-s ${SEED} -v 
-aiku/%/scode-pos/verb.scode.gz: aiku/%/pairs %.verb.pairs.gz
+aiku/%/scode-pos/verb.scode.gz: aiku/%/pairs verb.pairs.gz
 	-mkdir aiku/$*/scode-pos/
-	zcat $</*.v.pairs.gz $*.verb.pairs.gz | scode ${SC_OPTIONS} | gzip > $@
+	zcat $</*.v.pairs.gz verb.pairs.gz | scode ${SC_OPTIONS} | gzip > $@
 
-aiku/%/scode-pos/noun.scode.gz: aiku/%/pairs %.noun.pairs.gz
+aiku/%/scode-pos/noun.scode.gz: aiku/%/pairs noun.pairs.gz
 	-mkdir aiku/$*/scode-pos/
-	zcat $</*.n.pairs.gz $*.noun.pairs.gz | scode ${SC_OPTIONS} | gzip > $@
+	zcat $</*.n.pairs.gz noun.pairs.gz | scode ${SC_OPTIONS} | gzip > $@
 
 ## ITA=0.9 || S-CODE for POS-Based experiments. 
 on.pairs0.9.gz: on.all.gz # list of pairs that have higher IAA than 0.9
@@ -221,13 +231,13 @@ on.pairs0.9.gz: on.all.gz # list of pairs that have higher IAA than 0.9
 on.%.pairs-0.9.gz: on.pairs0.9.gz
 	zcat $< | grep -P "\.$*\t" | pair-filtering.py aiku/on/pairs | tee >(gzip > $@) | wc -l
 
-aiku/%/scode-pos-90/verb.scode.gz: on.v.pairs-0.9.gz %.verb.pairs.gz
+aiku/%/scode-pos-90/verb.scode.gz: on.v.pairs-0.9.gz verb.pairs.gz
 	-mkdir aiku/$*/scode-pos-90/
-	zcat $< $*.verb.pairs.gz | scode ${SC_OPTIONS} | gzip > $@
+	zcat $^ | scode ${SC_OPTIONS} | gzip > $@
 
-aiku/%/scode-pos-90/noun.scode.gz: on.n.pairs-0.9.gz %.noun.pairs.gz
+aiku/%/scode-pos-90/noun.scode.gz: on.n.pairs-0.9.gz noun.pairs.gz
 	-mkdir aiku/$*/scode-pos-90/
-	zcat $< $*.noun.pairs.gz | scode ${SC_OPTIONS} | gzip > $@
+	zcat $^ | scode ${SC_OPTIONS} | gzip > $@
 
 ### Clustering substitute word vectors (Y-based approach) ###
 
@@ -243,14 +253,12 @@ aiku/on/km-p/v.Yv.km.%.gz: aiku/on/scode-pos-90/verb.scode.gz
 	gzip > $@
 
 scores/on.n.Yv.%.score: on.n.pairs-0.9.gz aiku/on/km-p/n.Yv.km.%.gz ../keys/on.n-0.9.key
-	zcat $< | find-sense-test.py aiku/on/km-p/n.Yv.km.$*.gz > ans1.k=$*.tmp
-	java -jar ${SS_JAR} -s ../keys/on.n-0.9.key ans1.k=$*.tmp | tee $@ | tail -2
-	#rm ans1.tmp
+	zcat $< | find-sense-test.py aiku/on/km-p/n.Yv.km.$*.gz >  ans-Yv-n.k.$*.tmp
+	java -jar ${SS_JAR} -s ../keys/on.n-0.9.key ans-Yv-n.k.$*.tmp | tee $@ | tail -2
 
 scores/on.v.Yv.%.score: on.v.pairs-0.9.gz aiku/on/km-p/v.Yv.km.%.gz ../keys/on.v-0.9.key
-	zcat $< | find-sense-test.py aiku/on/km-p/v.Yv.km.$*.gz > ans2.k=$*.tmp
-	java -jar ${SS_JAR} -s ../keys/on.v-0.9.key ans2.k=$*.tmp | tee $@ | tail -2
-	#rm ans2.tmp
+	zcat $< | find-sense-test.py aiku/on/km-p/v.Yv.km.$*.gz > ans-Yv-v.k.$*.tmp
+	java -jar ${SS_JAR} -s ../keys/on.v-0.9.key ans-Yv-v.k.$*.tmp | tee $@ | tail -2
 
 ### Clustering concatenation of the target word and subs vector: (XY_v vectors) ###
 
@@ -261,14 +269,12 @@ aiku/on/km-p/n.XYv.km.%.gz: aiku/on/scode-pos-90/noun.scode.gz on.n.pairs-0.9.gz
 	concat-XY_v.py $^ | wkmeans -r 8 -l -w -v -s ${SEED} -k $* | gzip > $@
 
 scores/on.v.XYv.%.score: aiku/on/km-p/v.XYv.km.%.gz ../keys/on.v-0.9.key
-	zcat $< | find-sense-XY_v.py > ans3.k=$*.tmp
-	java -jar ${SS_JAR} -s ../keys/on.v-0.9.key ans3.k=$*.tmp | tee $@ | tail -2
-	#rm ans3.tmp
+	zcat $< | find-sense-XY_v.py > ans-XYv-v.k.$*.tmp
+	java -jar ${SS_JAR} -s ../keys/on.v-0.9.key ans-XYv-v.k.$*.tmp | tee $@ | tail -2
 
 scores/on.n.XYv.%.score: aiku/on/km-p/n.XYv.km.%.gz ../keys/on.n-0.9.key
-	zcat $< | find-sense-XY_v.py  > ans4.k=$*.tmp
-	java -jar ${SS_JAR} -s ../keys/on.n-0.9.key ans4.k=$*.tmp | tee $@ | tail -2
-	#rm ans4.tmp
+	zcat $< | find-sense-XY_v.py > ans-XYv-n.k.$*.tmp
+	java -jar ${SS_JAR} -s ../keys/on.n-0.9.key ans-XYv-n.k.$*.tmp | tee $@ | tail -2
 
 ### Clustering concatenation of the target word and sum of subs vectors: (XYbar vectors)
 
@@ -279,13 +285,12 @@ aiku/on/km-p/n.XYb.km.%.gz: aiku/on/scode-pos-90/noun.scode.gz on.n.pairs-0.9.gz
 	concat-XYb.py $^ | wkmeans ${KM_OPTIONS} -k $* | gzip > $@
 
 scores/on.v.XYb.%.score: aiku/on/km-p/v.XYb.km.%.gz ../keys/on.v-0.9.key
-	zcat $< | find-sense-XYb.py > ans5.k=$*.tmp
-	java -jar ${SS_JAR} -s ../keys/on.v-0.9.key ans5.k=$*.tmp | tee $@ | tail -2
-	#rm ans3.tmp
+	zcat $< | find-sense-XYb.py > ans-XYb-v.k.$*.tmp
+	java -jar ${SS_JAR} -s ../keys/on.v-0.9.key ans-XYb-v.k.$*.tmp | tee $@ | tail -2
 
 scores/on.n.XYb.%.score: aiku/on/km-p/n.XYb.km.%.gz ../keys/on.n-0.9.key
-	zcat $< | find-sense-XYb.py > ans6.k=$*.tmp
-	java -jar ${SS_JAR} -s ../keys/on.n-0.9.key ans6.k=$*.tmp | tee $@ | tail -2
+	zcat $< | find-sense-XYb.py > ans-XYb-n.k.$*.tmp
+	java -jar ${SS_JAR} -s ../keys/on.n-0.9.key ans-XYb-n.k.$*.tmp | tee $@ | tail -2
 
 on.%.tab: scores
 	for p in v n; do \
@@ -298,7 +303,7 @@ on.%.tab: scores
 ../keys/gold/%: ../keys/%.keys
 	gold-key-splitter.py $< $@
 
-#make n-svm-cv-exp DATASET=aiku/on/
+#make n-svm-cv-exp DATASET=aiku/on/ # Check our lexicon mapping idea (Osman and David)
 %-svm-cv-exp: ${DATASET}
 	cd ${DATASET}; make $*-svm-cv-exp 
 
@@ -339,3 +344,9 @@ ims-tw-test0.9.txt: ims-wordlist.txt on-tw-list0.9.txt
 
 ims-run-on: dummy #ims-tw-test.txt
 	cd ims/ims/; test-ims.sh $<
+
+ims.on.key: ${ONTO_SENSE_INVENTORY} ~/nltk_data/corpora/wordnet/index.sense
+	ims-wn-mapper.py $^ > $@
+
+scores/ims.on.%.score: ../keys/on.%-0.9.key ims.on.key
+	java -jar ${SS_JAR} -s --no-remapping $^ | tee $@ | tail -2

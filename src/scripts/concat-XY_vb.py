@@ -39,12 +39,12 @@ print >> sys.stderr, "scode vectors are read."
 
 w = sc_vectors.keys()[0] # take an arbitrary key to obtain dimension
 dimension = sc_vectors[w].shape[0]
-for X, d in pairs.viewitems():
+for X, d in pairs.iteritems():
     Y_bar = np.zeros(dimension)
-    for Y, count in d.viewitems():
+    for Y, count in d.iteritems():
         Y_bar += count * sc_vectors[Y]
     Y_bar /= (Y_bar.dot(Y_bar) ** 0.5)
-    print "{}\t1\t{}\t{}".format(X, '\t'.join(map(str, sc_vectors[X])), 
+    print "{0}\t1\t{1}\t{2}".format(X, '\t'.join(map(str, sc_vectors[X])), 
                                  '\t'.join(map(str, Y_bar)))
 
 print >> sys.stderr, "concetanation is done."

@@ -21,7 +21,7 @@ for line in sys.stdin:
     d[tw][inst_id][cls] += count
 
 #print everything in semeval format
-for tw, instances in d.viewitems():
+for tw, instances in d.iteritems():
     for inst_id in instances:
-        print "{} {} {}".format(tw, inst_id, " ".join(["{}-{}/{}".format(tw, label, c)
-                        for label, c in instances[inst_id].viewitems()]))
+        print "{0} {1} {2}".format(tw, inst_id, " ".join(["{0}-{1}/{2}".format(tw, label, c)
+                        for label, c in instances[inst_id].iteritems()]))

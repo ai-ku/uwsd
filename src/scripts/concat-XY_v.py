@@ -33,8 +33,8 @@ for i, line in enumerate(scode_f):
 
 print >> sys.stderr, "scode vectors are read."
 
-for X, d in pairs.viewitems():
-    for Y, count in d.viewitems():
-        print "{}__{}\t{}\t{}\t{}".format(X, count, count, sc_vectors[X], sc_vectors[Y])
+for X, d in pairs.iteritems():
+    for Y, count in d.iteritems():
+        print "{0}__{1}\t{2}\t{3}\t{4}".format(X, count, count, sc_vectors[X], sc_vectors[Y])
 
 print >> sys.stderr, "concetanation is done."

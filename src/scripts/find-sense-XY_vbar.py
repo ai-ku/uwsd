@@ -17,4 +17,4 @@ d = dd(lambda: dd(lambda: dd(int)))
 for line in sys.stdin:
     m = regex.match(line)
     inst_id, tw, label = map(m.group, [1,2,3])
-    print "{} {} {}-{}/1.0".format(tw, inst_id, tw, label)
+    print "{0} {1} {2}-{3}/1.0".format(tw, inst_id, tw, label)
