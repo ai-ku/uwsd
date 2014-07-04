@@ -151,10 +151,11 @@ testkey = load_key('trace.ans')
 #goldkey = load_key('add.key')
 #testkey = load_key('add.ans')
 
-NUMBER_OF_CHUNKS = 5
+#NUMBER_OF_CHUNKS = 5
 for lemma, inst_dict in sorted(goldkey.iteritems()):
     all_instances = inst_dict.keys()
     random.shuffle(all_instances)
+    NUMBER_OF_CHUNKS = len(all_instances) # leave-one-out-cross-validation
     test_sets = list(chunks(all_instances, len(all_instances) / NUMBER_OF_CHUNKS))
     # if division not exact, add all instances in last chunk to previous so that
     # we have NUMBER_OF_CHUNKS chunks.
