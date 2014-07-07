@@ -10,6 +10,7 @@ import sys
 from nlp_utils import fopen
 from collections import defaultdict as dd
 from embedding_utils import read_embedding_vectors
+from scipy.spatial.distance import pdist, squareform, cosine, euclidean
 
 def get_key_dict(key_f):
     d = dd(lambda : dict())
@@ -18,9 +19,17 @@ def get_key_dict(key_f):
         d[word][instance_id] = sense
     return d
 
+def calc_nearest_neighbors(vectors, test_instances, dist=euclidean):
+    print >> sys.stderr, "Similarity calc: # of instances %d" % len(len(vectors.keys()))
+    index_dict = {}
+    array = []
 
-def calc_nearest_neighbors(vectors, test_instances):
-    pass
+    for i, key in enumerate(vectors):
+        array.append(vectors[key][0])
+        index_dict[key] = i
+
+    M = squareform(pdist(array, dist))
+    return (M, index_dict)
 
 def get_nearest_neighbors(neighbors, test_instance):
     # example: economy.n.on.1
@@ -50,7 +59,7 @@ def X_based():
     vectors = read_embedding_vectors(scode_f)[0]
     key_dict = get_key_dict(key_f)
 
-    neighbors = calc_nearest_neighbors(vectors, test_inst_f)
+    dist_matrix, index_dict = calc_nearest_neighbors(vectors, test_inst_f)
 
     k = 4 # TODO: make an iteration on range(1, max_num_neigh, 2)
     for test_instance in fopen(test_inst_f):
