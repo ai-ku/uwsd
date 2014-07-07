@@ -3,6 +3,30 @@
 
 __author__ = "Osman Baskaya"
 
+"""
+Aim: WN 1.7 -> WN 3.0 -> Ontonotes Sense Definition
+- index.sense (WN 3.0) is processed.
+This file contains sense key and sense number. Sense number need to be known because
+using these numbers we transform 3.0 to Ontonotes Sense definition.
+
+Algorithm:
+
+IMS senses -> WN 3.0
+
+Assumption is that *sense numbers* are not different between different Wordnet version.
+This may not be correct since according to documentation sense numbers are given
+frequency of a word (the most frequent sense is #1 sense number).
+
+Some senses exist in 1.7 but not in WordNet 3.0. We can't map this senses. So not_in_WN3 
+list contains these senses/instances. Since these instances are not mapped, we cannot
+evaluate the performance of the system for those instances (Precision/Recall should not
+be the same).
+
+After we find out sense number of an instance, we check ontonotes has this sense, if it has
+we return Ontonotes equivalent of this sense, if not, we label this sense as 
+no_lexicon_sense
+"""
+
 import sys
 import os
 from bs4 import BeautifulSoup
@@ -14,7 +38,7 @@ index_sense_f = sys.argv[2]
 
 NONE_OF_ABOVE_SENSE = "none of the above"
 
-wn_set = ['3.0', '2.0', '1.7']
+wn_set = ['3.0', '2.0', '1.7'] # get only the Wordnet senses from Ontonotes
 
 def get_inventory_info():
     d = dd(dict)
@@ -85,3 +109,5 @@ for fn in ans_files:
             not_in_WN3.append(key)
 
 print >> sys.stderr, len(not_in_WN3), len(set(not_in_WN3)), set(not_in_WN3)
+
+

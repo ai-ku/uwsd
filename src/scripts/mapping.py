@@ -137,17 +137,18 @@ def run_eval(lemma, goldkey, testkey, test_sets, all_instances):
     for test_instances in test_sets:
         training_instances = all_instances.difference(test_instances)
         remapped_testkey = remap(goldkey, testkey, training_instances)
-        all_chunks.update(remapped_testkey)
+        if len(training_instances) != 0:
+            all_chunks.update(remapped_testkey)
     print_as_ans_key(lemma, all_chunks)
         
 
 
-#goldkey = load_key(sys.argv[1])
-#testkey = load_key(sys.argv[2])
+goldkey = load_key(sys.argv[1])
+testkey = load_key(sys.argv[2])
 #goldkey = load_key('all.singlesense.key')
 #testkey = load_key('induced.ans')
-goldkey = load_key('trace.key')
-testkey = load_key('trace.ans')
+#goldkey = load_key('trace.key')
+#testkey = load_key('trace.ans')
 #goldkey = load_key('add.key')
 #testkey = load_key('add.ans')
 

@@ -1,0 +1,4 @@
+- Noun ve verb'ler disindaki part-of-speech'ler icin sense-inventories de herhangi bir dosya bulunmuyor.
+- Inter-annotator-agreement <90 olabilir mi? absence-n icin 0.66. Neden?
+- "None of the above sense" may be problematic since sometimes it is specified by a different version of wordnet. That is, senses above are annotated by using wordnet 3.0
+but Ontonotes says different version of wordnet (2.0) for the last sense (none of the above).
