@@ -20,7 +20,7 @@ def get_key_dict(key_f):
     return d
 
 def calc_nearest_neighbors(vectors, test_instances, dist=euclidean):
-    print >> sys.stderr, "Similarity calc: # of instances %d" % len(len(vectors.keys()))
+    print >> sys.stderr, "Similarity calc: %d instances" % len(vectors.keys())
     index_dict = {}
     array = []
 
@@ -30,6 +30,9 @@ def calc_nearest_neighbors(vectors, test_instances, dist=euclidean):
 
     M = squareform(pdist(array, dist))
     return (M, index_dict)
+
+def sort_neighbors(M, index_dict):
+    pass
 
 def get_nearest_neighbors(neighbors, test_instance):
     # example: economy.n.on.1
@@ -47,6 +50,16 @@ def classify(neighbors, test_inst, key_dict, k):
 
     return max(senses, key = lambda s: senses[s])
 
+def get_embedding_vectors(scode_f):
+
+    d = dd(lambda: dict())
+    vectors = read_embedding_vectors(scode_f)[0]
+    for inst in vectors:
+        instance = inst[1:-1]
+        word = instance.rsplit('.', 2)[0]
+        d[word][instance] = vectors[inst][0]
+    return d
+
 def read_test_instances(test_inst_f):
     return fopen(test_inst_f).read()
 
@@ -56,15 +69,18 @@ def X_based():
     test_inst_f = sys.argv[3] # the file contains the test instances
     max_num_neigh = int(sys.argv[4])
     
-    vectors = read_embedding_vectors(scode_f)[0]
     key_dict = get_key_dict(key_f)
+    embeddings = get_embedding_vectors(scode_f)
 
-    dist_matrix, index_dict = calc_nearest_neighbors(vectors, test_inst_f)
+    dist_matrix, index_dict = calc_nearest_neighbors(embeddings, test_inst_f)
 
     k = 4 # TODO: make an iteration on range(1, max_num_neigh, 2)
     for test_instance in fopen(test_inst_f):
         pred_sense = classify(neighbors, test_instance, key_dict, k)
         #TODO: write knn.noun.k.ans
+
+
+vectors = read_embedding_vectors('dummy.scode.gz')[0]
 
 if __name__ == 'main':
     X_based()
