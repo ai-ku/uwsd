@@ -348,12 +348,12 @@ ims-tw-test0.9.txt: ims-wordlist.txt on-tw-list0.9.txt
 	comm -12 $^ | sort | uniq > $@
 	wc $@
 
-ims-run-on: dummy #ims-tw-test.txt
+ims-run-on: ims-tw-test.txt
 	cd ims/ims/; test-ims.sh $<
 
-ims.on.key: ${ONTO_SENSE_INVENTORY} ~/nltk_data/corpora/wordnet/index.sense
+ims.on.ans: ${ONTO_SENSE_INVENTORY} ~/nltk_data/corpora/wordnet/index.sense
 	ims-wn-mapper.py $^ > $@
 
-scores/ims.on.%.score: ../keys/on.%-0.9.key ims.on.key
+scores/ims.on.%.score: ../keys/on.%-0.9.key ims.on.ans
 	java -jar ${SS_JAR} -s --no-remapping $^ | tail -2 | tee $@ 
-	java -jar ${PFS_JAR} ims.on.key ../keys/on.%-0.9.key | tail -1 | tee -a $@
+	java -jar ${PFS_JAR} ims.on.ans ../keys/on.%-0.9.key | tail -1 | tee -a $@
