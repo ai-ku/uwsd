@@ -60,6 +60,17 @@ def concat_XYbar(embedding_d, subs, dim=25):
         d[X] = (np.concatenate(embedding_d[0][X][0], Y_bar), 1)
     return d
 
+def concat_XYw(embedding_d1, embedding_d2, sub_vecs, dim=25):
+    """ Combined embedding, weighted by substitute probabilities (i.e, Volkan's method) """
+    d = dict()
+    for target_word, sub_prob_dict in sub_vecs.iteritems():
+        X = embedding_d1[target_word] 
+        Y_bar = np.zeros(dim)
+        for sub, prob in sub_prob_dict.iteritems():
+            Y_bar = embedding_d2[sub] * 
+
+
+
 def write_vec(embedding_d, fn=None):
     f = sys.stdout
     if fn is not None:
