@@ -9,7 +9,7 @@ such as reading, vector concetanation and so on.
 
 from nlp_utils import fopen
 from collections import defaultdict as dd
-#from collections import Counter
+from collections import Counter
 import numpy as np
 import sys
 import gzip
@@ -62,14 +62,22 @@ def concat_XYbar(embedding_d, subs, dim=25):
 
 def concat_XYw(embedding_d1, embedding_d2, sub_vecs, dim=25):
     """ Combined embedding, weighted by substitute probabilities (i.e, Volkan's method) """
-    d = dict()
-    for target_word, sub_prob_dict in sub_vecs.iteritems():
-        X = embedding_d1[target_word] 
+    to_return = []
+
+    for target_word, sub_probs in sub_vecs:
+        try:
+            X = embedding_d1[target_word][0] # [0] -> vector, [1] -> #of occurrences
+        except KeyError:
+            print >> sys.stderr, "no X embedding for %s" % target_word
+            continue # pass this on
         Y_bar = np.zeros(dim)
-        for sub, prob in sub_prob_dict.iteritems():
-            Y_bar = embedding_d2[sub] * 
-
-
+        for sub, prob in sub_probs:
+            try: 
+                Y_bar += embedding_d2[sub][0] * prob
+            except KeyError:
+                print >> sys.stderr, "no Y embedding for %s" % sub
+        to_return.append(np.concatenate((X, Y_bar)))
+    return to_return
 
 def write_vec(embedding_d, fn=None):
     f = sys.stdout
