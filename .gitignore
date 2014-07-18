@@ -29,6 +29,8 @@ develop-eggs
 lib
 lib64
 
+src/scripts/*.pyc
+
 # Installer logs
 pip-log.txt
 
