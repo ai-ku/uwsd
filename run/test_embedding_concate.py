@@ -12,7 +12,6 @@ import os
 from embedding_utils import concat_XYw, read_embedding_vectors
 from fastsubs_utils import read_sub_vectors
 
-
 embeddings = read_embedding_vectors('aiku/on/scode-pos-90/noun.scode.gz')
 print "reading embedding done"
 sub_vectors = read_sub_vectors('dummy.sub.gz')

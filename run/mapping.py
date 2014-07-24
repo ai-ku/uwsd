@@ -17,8 +17,10 @@ def chunks(l, n):
     for i in xrange(0, len(l), n):
         yield l[i:i+n]
 
+
 def load_key(fname):
 
+    print >> sys.stderr, "loading %s" % fname
     d = dd(lambda: dd(lambda: dd(lambda : 0.)))
 
     lines = open(fname).readlines()
@@ -27,7 +29,7 @@ def load_key(fname):
         line = line.split()
         key, inst = line[:2]
         senses = line[2:]
-        senses = [sense.split('/')  for sense in senses]
+        senses = [sense.split('/') for sense in senses]
         if len(senses) == 1:
             #c += 1
             d[key][inst][senses[0][0]] = 1.
@@ -37,7 +39,7 @@ def load_key(fname):
                 if len(sense) == 1:
                     uni.append(sense)
                 else:
-                    d[key][inst][sense[0]] = sense[1]
+                    d[key][inst][sense[0]] = float(sense[1])
             if len(uni) > 0:
                 assert len(uni) != len(senses), "Some sense weighted, some not: %s" % inst
                 val = 1. / len(uni)
@@ -149,12 +151,6 @@ def run_eval(lemma, goldkey, testkey, test_sets, all_instances):
 
 goldkey = load_key(sys.argv[1])
 testkey = load_key(sys.argv[2])
-#goldkey = load_key('all.singlesense.key')
-#testkey = load_key('induced.ans')
-#goldkey = load_key('trace.key')
-#testkey = load_key('trace.ans')
-#goldkey = load_key('add.key')
-#testkey = load_key('add.ans')
 
 #NUMBER_OF_CHUNKS = 5
 for lemma, inst_dict in sorted(goldkey.iteritems()):
