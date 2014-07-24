@@ -61,6 +61,10 @@ def remap(gold_instances, test_instances, training_instances):
             test_ids.extend(ts_perception.keys())
             gold_ids.extend(gs_perception.keys())
 
+
+    gold_ids = set(gold_ids)
+    test_ids = set(test_ids)
+
     m = len(test_ids)
     n = len(gold_ids)
 
