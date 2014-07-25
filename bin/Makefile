@@ -1,4 +1,4 @@
-all: fastsubs scode wkmeans wordsub metrics scripts 
+all: fastsubs scode wkmeans wordsub metrics
 
 ### Reprository Check-out Commands
 ## If the latest version is required then do not set the corresponding
@@ -28,9 +28,6 @@ dists: check
 	test -e ../src/dist || (cd ../src/ ; git clone ${DIST_GIT_REPO} ; git checkout ${DIST_GIT_TAG}) 
 	cd ../src/dist; make
 	test -e $@ || ln -s ../src/dist/dists .
-
-scripts: check
-	-test -e $@ || ln -s ../src/scripts/*p[yl] ../run/
 
 scode: check
 	test -e ../src/scode || (cd ../src/ ; git clone ${SCODE_GIT_REPO} ; git checkout ${SCODE_GIT_TAG}) 
