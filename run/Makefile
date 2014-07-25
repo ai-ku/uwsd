@@ -19,6 +19,7 @@ SEED=1
 SS_JAR=../bin/single-sense-precision.jar
 NG_JAR=../bin/weighted-ndcg.jar
 PFS_JAR=../bin/pairedFScore.jar
+MAP_OPT=2>/dev/null | cut -d '/' -f1 # option arguments for mapping.py
 
 #TEST=$(shell find ../data/pos-filtering/ -name "*.raw.gz" | sort)
 
@@ -254,12 +255,18 @@ aiku/on/km-p/v.Yv.km.%.gz: aiku/on/scode-pos-90/verb.scode.gz
 
 scores/on.n.Yv.%.score: on.n.pairs-0.9.gz aiku/on/km-p/n.Yv.km.%.gz ../keys/on.n-0.9.key
 	zcat $< | find-sense-test.py aiku/on/km-p/n.Yv.km.$*.gz >  ans-Yv-n.k.$*.tmp
-	java -jar ${SS_JAR} -s ../keys/on.n-0.9.key ans-Yv-n.k.$*.tmp | tail -2 | tee $@
+	python scorer.py <(python mapping.py ../keys/on.n-0.9.key ans-Yv-n.k.$*.tmp ${MAP_OPT}) \
+	../keys/on.n-0.9.key | tee $@
+	#tail -1 trash/$@ | tee -a $@
+	#java -jar ${SS_JAR} -s ../keys/on.n-0.9.key ans-Yv-n.k.$*.tmp | tail -2 | tee $@
 	java -jar ${PFS_JAR} ans-Yv-n.k.$*.tmp ../keys/on.n-0.9.key a | tail -1 | tee -a $@
 
 scores/on.v.Yv.%.score: on.v.pairs-0.9.gz aiku/on/km-p/v.Yv.km.%.gz ../keys/on.v-0.9.key
 	zcat $< | find-sense-test.py aiku/on/km-p/v.Yv.km.$*.gz > ans-Yv-v.k.$*.tmp
-	java -jar ${SS_JAR} -s ../keys/on.v-0.9.key ans-Yv-v.k.$*.tmp | tail -2 | tee $@ 
+	python scorer.py <(python mapping.py ../keys/on.v-0.9.key ans-Yv-v.k.$*.tmp ${MAP_OPT}) \
+	../keys/on.v-0.9.key | tee $@
+	#tail -1 trash/$@ | tee -a $@
+	#java -jar ${SS_JAR} -s ../keys/on.v-0.9.key ans-Yv-v.k.$*.tmp | tail -2 | tee $@ 
 	java -jar ${PFS_JAR} ans-Yv-v.k.$*.tmp ../keys/on.v-0.9.key a | tail -1 | tee -a $@
 
 ### Clustering concatenation of the target word and subs vector: (XY_v vectors) ###
@@ -272,12 +279,18 @@ aiku/on/km-p/n.XYv.km.%.gz: aiku/on/scode-pos-90/noun.scode.gz on.n.pairs-0.9.gz
 
 scores/on.v.XYv.%.score: aiku/on/km-p/v.XYv.km.%.gz ../keys/on.v-0.9.key
 	zcat $< | find-sense-XY_v.py > ans-XYv-v.k.$*.tmp
-	java -jar ${SS_JAR} -s ../keys/on.v-0.9.key ans-XYv-v.k.$*.tmp | tail -2 | tee $@
+	python scorer.py <(python mapping.py ../keys/on.v-0.9.key ans-XYv-v.k.$*.tmp ${MAP_OPT}) \
+	../keys/on.v-0.9.key | tee $@
+	#tail -1 trash/$@ | tee -a $@
+	#java -jar ${SS_JAR} -s ../keys/on.v-0.9.key ans-XYv-v.k.$*.tmp | tail -2 | tee $@
 	java -jar ${PFS_JAR} ans-XYv-v.k.$*.tmp ../keys/on.v-0.9.key a | tail -1 | tee -a $@ 
 
 scores/on.n.XYv.%.score: aiku/on/km-p/n.XYv.km.%.gz ../keys/on.n-0.9.key
 	zcat $< | find-sense-XY_v.py > ans-XYv-n.k.$*.tmp
-	java -jar ${SS_JAR} -s ../keys/on.n-0.9.key ans-XYv-n.k.$*.tmp | tail -2 | tee $@
+	python scorer.py <(python mapping.py ../keys/on.n-0.9.key ans-XYv-n.k.$*.tmp ${MAP_OPT}) \
+	../keys/on.n-0.9.key | tee $@
+	#tail -1 trash/$@ | tee -a $@
+	#java -jar ${SS_JAR} -s ../keys/on.n-0.9.key ans-XYv-n.k.$*.tmp | tail -2 | tee $@
 	java -jar ${PFS_JAR} ans-XYv-n.k.$*.tmp ../keys/on.n-0.9.key a | tail -1 | tee -a $@ 
 
 ### Clustering concatenation of the target word and sum of subs vectors: (XYbar vectors)
@@ -290,19 +303,29 @@ aiku/on/km-p/n.XYb.km.%.gz: aiku/on/scode-pos-90/noun.scode.gz on.n.pairs-0.9.gz
 
 scores/on.v.XYb.%.score: aiku/on/km-p/v.XYb.km.%.gz ../keys/on.v-0.9.key
 	zcat $< | find-sense-XYb.py > ans-XYb-v.k.$*.tmp
-	java -jar ${SS_JAR} -s ../keys/on.v-0.9.key ans-XYb-v.k.$*.tmp | tail -2 | tee $@
+	python scorer.py <(python mapping.py ../keys/on.v-0.9.key ans-XYb-v.k.$*.tmp ${MAP_OPT}) \
+	../keys/on.v-0.9.key | tee $@
+	#tail -1 trash/$@ | tee -a $@
+	#java -jar ${SS_JAR} -s ../keys/on.v-0.9.key ans-XYb-v.k.$*.tmp | tail -2 | tee $@
 	java -jar ${PFS_JAR} ans-XYb-v.k.$*.tmp ../keys/on.v-0.9.key a | tail -1 | tee -a $@
 
+
 scores/on.n.XYb.%.score: aiku/on/km-p/n.XYb.km.%.gz ../keys/on.n-0.9.key
-	zcat $< | find-sense-XYb.py > ans-XYb-n.k.$*.tmp
-	java -jar ${SS_JAR} -s ../keys/on.n-0.9.key ans-XYb-n.k.$*.tmp | tail -2 | tee $@
+	zcat $< | python find-sense-XYb.py > ans-XYb-n.k.$*.tmp
+	python scorer.py <(python mapping.py ../keys/on.n-0.9.key ans-XYb-n.k.$*.tmp ${MAP_OPT}) \
+	../keys/on.n-0.9.key | tee $@
+	#tail -1 trash/$@ | tee -a $@
+	#java -jar ${SS_JAR} -s ../keys/on.n-0.9.key ans-XYb-n.k.$*.tmp | tail -2 | tee $@
 	java -jar ${PFS_JAR} ans-XYb-n.k.$*.tmp ../keys/on.n-0.9.key a | tail -1 | tee -a $@
 
 on.%.tab: scores
-	for p in v n; do \
-		for i in 3 8 16 25 32 64 128 256 512; do \
-		 echo -n $$i"-"$$p"	"; cat $</on.$$p.$*.$$i.score | tail -2 | head -1 | cut -f4;\
-	done; done | tee $@
+	python score2tab.py $*.Yv.  $< | tee $@
+	python score2tab.py $*.XYv. $< | tee -a $@
+	python score2tab.py $*.XYb. $< | tee -a $@
+	#for p in v n; do \
+		#for i in 2 4 8 16 32 64 128 256 512 1024; do \
+		 #echo -n $$i"-"$$p"	"; cat $</on.$$p.$*.$$i.score | grep -P "0.\d+"; \
+	#done; done | tee $@
 
 ### SVM based mapping experiments ###
 
@@ -318,7 +341,7 @@ on.mfs.baseline.txt: on.all.gz
 	zcat $< | cut -f4 | mfs-baseline.py | tee $@
 
 on.random%.n.baseline.txt: ../keys/on.n-0.9.key
-	random-baseline.py $< $* > $@.tmp
+	python random-baseline.py $< $* > $@.tmp
 	java -jar ${SS_JAR} -s ../keys/on.n-0.9.key $@.tmp | tail -2 | tee $@
 	java -jar ${PFS_JAR} $@.tmp ../keys/on.n-0.9.key   | tail -2 | tee -a $@
 
