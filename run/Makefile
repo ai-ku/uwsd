@@ -377,6 +377,9 @@ ims-run-on: ims-tw-test.txt
 ims.on.ans: ${ONTO_SENSE_INVENTORY} ~/nltk_data/corpora/wordnet/index.sense
 	ims-wn-mapper.py $^ > $@
 
-scores/ims.on.%.score: ../keys/on.%-0.9.key ims.on.ans
+ims.on.%.ans: ../keys/on.%-0.9.key ims.on.ans
+	python ans-filterer.py $^ > $@
+
+scores/ims.on.%.score: ../keys/on.%-0.9.key ims.on.%.ans
 	java -jar ${SS_JAR} -s --no-remapping $^ | tail -2 | tee $@ 
 	java -jar ${PFS_JAR} ims.on.ans ../keys/on.%-0.9.key | tail -1 | tee -a $@
