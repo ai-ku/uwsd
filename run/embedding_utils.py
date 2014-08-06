@@ -14,6 +14,15 @@ import numpy as np
 import sys
 import gzip
 
+def get_X(embeddings):
+    return embeddings[0]
+
+def get_Y(embeddings):
+    if len(embeddings.keys()) >= 2:
+        return embeddings[1]
+    else:
+        return embeddings[0]
+
 def read_embedding_vectors(embedding_f, wordset=None):
     """ word_set is a set that indicates the tokens to fetch
         from embedding file.
@@ -60,9 +69,11 @@ def concat_XYbar(embedding_d, subs, dim=25):
         d[X] = (np.concatenate(embedding_d[0][X][0], Y_bar), 1)
     return d
 
-def concat_XYw(embedding_d1, embedding_d2, sub_vecs, dim=25):
+def concat_XYw(embedding_d1, embedding_d2, sub_vecs):
     """ Combined embedding, weighted by substitute probabilities (i.e, Volkan's method) """
     to_return = []
+
+    dim = len(embedding_d2[embedding_d2.keys()[0]]) # Y vectors dimensionality
 
     for target_word, sub_probs in sub_vecs:
         try:
