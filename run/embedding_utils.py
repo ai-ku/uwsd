@@ -69,13 +69,23 @@ def concat_XYbar(embedding_d, subs, dim=25):
         d[X] = (np.concatenate(embedding_d[0][X][0], Y_bar), 1)
     return d
 
-def concat_XYw(embedding_d1, embedding_d2, sub_vecs):
-    """ Combined embedding, weighted by substitute probabilities (i.e, Volkan's method) """
-    to_return = []
+def concat_XYw(embedding_d1, embedding_d2, sub_vecs, target_word_strip_func=None):
+    """ Combined embedding, weighted by substitute probabilities (i.e, Volkan's method) 
+        original_X_embeddings indicates that sub_vecs target words and embeddings are matches.
+        We need this because this methods can concatenate embeddings that are not based on
+        the data which we get substitute distributions.
+    """
 
-    dim = len(embedding_d2[embedding_d2.keys()[0]]) # Y vectors dimensionality
+    func = target_word_strip_func
+
+    to_return = []
+    target_words = []
+
+    dim = len(embedding_d2[embedding_d2.keys()[0]][0])# Y vectors dimensionality
 
     for target_word, sub_probs in sub_vecs:
+        if func is not None:
+            target_word = func(target_word)
         try:
             X = embedding_d1[target_word][0] # [0] -> vector, [1] -> #of occurrences
         except KeyError:
@@ -88,7 +98,8 @@ def concat_XYw(embedding_d1, embedding_d2, sub_vecs):
             except KeyError:
                 print >> sys.stderr, "no Y embedding for %s" % sub
         to_return.append(np.concatenate((X, Y_bar)))
-    return to_return
+        target_words.append(target_word)
+    return target_words, to_return
 
 def write_vec(embedding_d, fn=None):
     f = sys.stdout
