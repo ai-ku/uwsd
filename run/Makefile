@@ -318,6 +318,12 @@ scores/on.n.XYb.%.score: aiku/on/km-p/n.XYb.km.%.gz ../keys/on.n-0.9.key
 	#java -jar ${SS_JAR} -s ../keys/on.n-0.9.key ans-XYb-n.k.$*.tmp | tail -2 | tee $@
 	java -jar ${PFS_JAR} ans-XYb-n.k.$*.tmp ../keys/on.n-0.9.key a | tail -1 | tee -a $@
 
+### Clustering concatenation of the target word and subs vector: (XYw vectors) ###
+
+aiku/on/km-p/on.n.XYw.orig.km.%.gz: aiku/on/scode-pos-90/noun.scode.gz on.sub.gz
+	python concat-XYw.py $< $< <(zcat on.sub.gz | grep -P "^<\w+\.n") |\
+		wkmeans -r 1 -l -w -v -s ${SEED} -k $* | gzip > $@
+
 on.%.tab: scores
 	python score2tab.py $*.Yv.  $< | tee $@
 	python score2tab.py $*.XYv. $< | tee -a $@
@@ -378,7 +384,7 @@ ims.on.ans: ${ONTO_SENSE_INVENTORY} ~/nltk_data/corpora/wordnet/index.sense
 	ims-wn-mapper.py $^ > $@
 
 ims.on.%.ans: ../keys/on.%-0.9.key ims.on.ans
-	python ans-filterer.py $^ > $@
+	python filterer.py $^ 1 1 > $@
 
 scores/ims.on.%.score: ../keys/on.%-0.9.key ims.on.%.ans
 	java -jar ${SS_JAR} -s --no-remapping $^ | tail -2 | tee $@ 
