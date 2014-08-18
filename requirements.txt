@@ -1,0 +1,3 @@
+scikit-learn
+nose
+beautifulsoup4

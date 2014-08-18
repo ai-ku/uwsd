@@ -164,4 +164,5 @@ for lemma, inst_dict in sorted(goldkey.iteritems()):
         test_sets[NUMBER_OF_CHUNKS-1].extend(test_sets[NUMBER_OF_CHUNKS])
         test_sets.pop()
     test_sets = [set(t) for t in test_sets]
-    run_eval(lemma, goldkey[lemma], testkey[lemma], test_sets, all_instances)
+    if len(testkey[lemma]) != 0:
+        run_eval(lemma, goldkey[lemma], testkey[lemma], test_sets, all_instances)
