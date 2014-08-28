@@ -8,6 +8,7 @@ import re
 
 
 #on.n.XYv.128.score
+#on.n.X-1sc100.2.score
 
 #regex = re.compile('F.*Score.*(0\.\d+)')
 
@@ -15,7 +16,8 @@ pattern = sys.argv[1] # embedding type
 directory = sys.argv[2]
 
 regex = re.compile('.*F.*Score.*(0\.\d+).*')
-fn_regex = re.compile('scores/on\.(\w)\.(\w+)\.(\d+)\.score')
+#fn_regex = re.compile('scores/on\.(\w)\.(\w+)\.(\d+)\.score')
+fn_regex = re.compile('scores/on\.(\w)\.(.*)\.(\d+)\.score')
 
 
 print directory, pattern

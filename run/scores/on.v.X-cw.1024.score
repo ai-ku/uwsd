@@ -1,0 +1,6 @@
+
+Scores for system_file: "/dev/fd/63" 	 gold_file: "../keys/on.v-0.9.key"
+	Precision is 0.938525352974 (35297 correct of 37609 attempted)
+	Recall is 0.540660182278 (35297 correct of 65285 attempted)
+	F1-Score is 0.686084708535
+

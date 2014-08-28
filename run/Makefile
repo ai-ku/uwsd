@@ -1,5 +1,6 @@
 SHELL := /bin/bash
 .SECONDARY:
+PATH:= ../bin/:${PATH}
 
 ### 1.1 BIN INSTALLATION
 bin:
@@ -45,7 +46,7 @@ system_initialization:
 	-ln -s /scratch/1/obaskaya/semeval13-task13/run/sampled.lemma1.gz 
 	-ln -s /scratch/1/obaskaya/semeval13-task13/run/sampled.pos1.gz 
 
-init-%:
+init-%::
 	-mkdir $*; cd $*; mkdir s07aw s10aw s2aw s3aw on s07wsi s10wsi s2wsi s3wsi;
 
 %.vocab.gz: ${TRAIN}
@@ -318,11 +319,121 @@ scores/on.n.XYb.%.score: aiku/on/km-p/n.XYb.km.%.gz ../keys/on.n-0.9.key
 	#java -jar ${SS_JAR} -s ../keys/on.n-0.9.key ans-XYb-n.k.$*.tmp | tail -2 | tee $@
 	java -jar ${PFS_JAR} ans-XYb-n.k.$*.tmp ../keys/on.n-0.9.key a | tail -1 | tee -a $@
 
-### Clustering concatenation of the target word and subs vector: (XYw vectors) ###
+### Clustering concatenation of the (XYw vectors) ###
+# Experiments for original (sub files are used also for creating embeddings)
 
-aiku/on/km-p/on.n.XYw.orig.km.%.gz: aiku/on/scode-pos-90/noun.scode.gz on.sub.gz
-	python concat-XYw.py $< $< <(zcat on.sub.gz | grep -P "^<\w+\.n") |\
-		wkmeans -r 1 -l -w -v -s ${SEED} -k $* | gzip > $@
+#to run 
+#for p in v n; do for k in 2 4 8 16 32 64 128 256 512 1024; do echo aiku/on/km-p/$p.XYw.orig.km.$k.gz; done done | xargs -n1 -P 20 make
+aiku/on/km-p/n.XYw.orig.km.%.gz: aiku/on/scode-pos-90/noun.scode.gz on.sub.gz
+	python concat-XYw.py $< $< <(zcat on.sub.gz | grep -P "^<\w+\.n") \
+	--subs_embed_same | wkmeans -r 32 -l -w -v -s ${SEED} -k $* | gzip > $@
+
+aiku/on/km-p/v.XYw.orig.km.%.gz: aiku/on/scode-pos-90/verb.scode.gz on.sub.gz
+	python concat-XYw.py $< $< <(zcat on.sub.gz | grep -P "^<\w+\.v") \
+	--subs_embed_same | wkmeans -r 32 -l -w -v -s ${SEED} -k $* | gzip > $@
+
+scores/on.n.XYw.orig.%.score: aiku/on/km-p/n.XYw.orig.km.%.gz ../keys/on.n-0.9.key
+	python filterer.py ../keys/on.n-0.9.key <(zcat $< | python find-sense-XYb.py) 1 1 \
+		> ans-XYw.orig-n.k.$*.tmp
+	python scorer.py <(python mapping.py ../keys/on.n-0.9.key ans-XYw.orig-n.k.$*.tmp \
+		${MAP_OPT}) ../keys/on.n-0.9.key | tee $@
+	#java -jar ${PFS_JAR} ans-XYw.orig-n.k.$*.tmp ../keys/on.n-0.9.key a | tail -1 | tee -a $@
+
+scores/on.v.XYw.orig.%.score: aiku/on/km-p/v.XYw.orig.km.%.gz ../keys/on.v-0.9.key
+	python filterer.py ../keys/on.v-0.9.key <(zcat $< | python find-sense-XYb.py) 1 1 \
+		> ans-XYw.orig-v.k.$*.tmp
+	python scorer.py <(python mapping.py ../keys/on.v-0.9.key ans-XYw.orig-v.k.$*.tmp \
+		${MAP_OPT}) ../keys/on.v-0.9.key | tee $@
+	#java -jar ${PFS_JAR} ans-XYw.orig-v.k.$*.tmp ../keys/on.v-0.9.key a | tail -1 | tee -a $@
+
+# Experiments for X and other Y embedding, noun (XO)
+exp-XO-n-%: aiku/on/scode-pos-90/noun.scode.gz on.sub.gz embeddings/
+	-mkdir -p aiku/on/km-p-XO
+	-rm -i aiku/on/km-p-XO/n.X-*.$*.gz
+	for e1 in `ls embeddings/*.embeddings`; do \
+		e=`echo $$e1 | sed -e 's|embeddings/||g' -e 's|.embeddings||g'`;\
+		python concat-XYw.py $< $$e1 <(zcat on.sub.gz | grep -P "^<\w+\.n") \
+		--subs_embed_same 2>/tmp/missing | wkmeans -r 16 -l -w -v -s ${SEED} -k $* |\
+		gzip > aiku/on/km-p-XO/n.X-$$e.km.$*.gz &\
+	done
+
+exp-XO-v-%: aiku/on/scode-pos-90/verb.scode.gz on.sub.gz embeddings/
+	-mkdir -p aiku/on/km-p-XO
+	-rm -i aiku/on/km-p-XO/v.X-*.$*.gz
+	for e1 in `ls embeddings/*.embeddings`; do \
+		e=`echo $$e1 | sed -e 's|embeddings/||g' -e 's|.embeddings||g'`;\
+		python concat-XYw.py $< $$e1 <(zcat on.sub.gz | grep -P "^<\w+\.v") \
+		--subs_embed_same 2>/tmp/missing | wkmeans -r 16 -l -w -v -s ${SEED} -k $* |\
+		gzip > aiku/on/km-p-XO/v.X-$$e.km.$*.gz &\
+	done
+
+score-XO-n-%: aiku/on/km-p-XO ../keys/on.n-0.9.key
+	for f in `ls $</n.*.km.$*.gz`; do\
+		e=`basename $$f | sed -e 's|.gz||' -e 's|.km||g'`;\
+		o="aiku/on/ans";\
+		echo "$$f processing... --> $$e";\
+		python filterer.py ../keys/on.n-0.9.key <(zcat $$f | python find-sense-XYb.py) 1 1 > $$o/$$e.ans;\
+		python scorer.py <(python mapping.py ../keys/on.n-0.9.key $$o/$$e.ans ${MAP_OPT}) ../keys/on.n-0.9.key | tee scores/on.$$e.score &\
+	done
+
+score-XO-v-%: aiku/on/km-p-XO/ ../keys/on.v-0.9.key
+	for f in `ls $</v.*.km.$*.gz`; do\
+		e=`basename $$f | sed -e 's|.gz||' -e 's|.km||g'`;\
+		o="aiku/on/ans";\
+		echo "$$f processing... --> $$e";\
+		python filterer.py ../keys/on.v-0.9.key <(zcat $$f | python find-sense-XYb.py) 1 1 > $$o/$$e.ans;\
+		python scorer.py <(python mapping.py ../keys/on.v-0.9.key $$o/$$e.ans ${MAP_OPT}) ../keys/on.v-0.9.key | tee scores/on.$$e.score &\
+	done
+ 
+# Experiments for other X embedding and Y embedding, noun
+exp-OY-n-%: aiku/on/scode-pos-90/noun.scode.gz on.sub.gz embeddings/
+	-mkdir -p aiku/on/km-p-OY
+	-rm -v aiku/on/km-p-OY/n.*-Y.km.$*.gz
+	for e1 in `ls embeddings/*.embeddings`; do \
+		e=`echo $$e1 | sed -e 's|embeddings/||g' -e 's|.embeddings||g'`;\
+		python concat-XYw.py $$e1 $< <(zcat on.sub.gz | grep -P "^<\w+\.n") \
+		2>/tmp/missing | wkmeans -r 16 -l -w -v -s ${SEED} -k $* |\
+		gzip > aiku/on/km-p-OY/n.$$e-Y.km.$*.gz &\
+	done;\
+
+exp-OY-v-%: aiku/on/scode-pos-90/verb.scode.gz on.sub.gz embeddings/
+	-mkdir -p aiku/on/km-p-OY
+	-rm -v aiku/on/km-p-OY/v.*-Y.km.$*.gz
+	for e1 in `ls embeddings/*.embeddings`; do \
+		e=`echo $$e1 | sed -e 's|embeddings/||g' -e 's|.embeddings||g'`;\
+		python concat-XYw.py $$e1 $< <(zcat on.sub.gz | grep -P "^<\w+\.v") \
+		2>/tmp/missing | wkmeans -r 16 -l -w -v -s ${SEED} -k $* |\
+		gzip > aiku/on/km-p-OY/v.$$e-Y.km.$*.gz &\
+	done;\
+
+score-OY-n-%: aiku/on/km-p-OY ../keys/on.n-0.9.key
+	for f in `ls $</n.*.km.$*.gz`; do\
+		e=`basename $$f | sed -e 's|.gz||' -e 's|.km||g'`;\
+		o="aiku/on/ans";\
+		echo "$$f processing... --> $$e";\
+		python filterer.py ../keys/on.n-0.9.key <(zcat $$f | python find-sense-XYb.py) 1 1 > $$o/$$e.ans;\
+		python scorer.py <(python mapping.py ../keys/on.n-0.9.key $$o/$$e.ans ${MAP_OPT}) ../keys/on.n-0.9.key | tee scores/on.$$e.score &\
+	done
+
+score-OY-v-%: aiku/on/km-p-OY ../keys/on.v-0.9.key
+	for f in `ls $</v.*.km.$*.gz`; do\
+		e=`basename $$f | sed -e 's|.gz||' -e 's|.km||g'`;\
+		o="aiku/on/ans";\
+		echo "$$f processing... --> $$e";\
+		python filterer.py ../keys/on.v-0.9.key <(zcat $$f | python find-sense-XYb.py) 1 1 > $$o/$$e.ans;\
+		python scorer.py <(python mapping.py ../keys/on.v-0.9.key $$o/$$e.ans ${MAP_OPT}) ../keys/on.v-0.9.key | tee scores/on.$$e.score &\
+	done
+
+# Experiments for other X and Y embedding 
+# not tested
+exp-OO-n-%: embeddings/high-prior on.sub.gz
+	for e1 in `ls $<`; do \
+		for e2 in `ls $<`; do\
+			python concat-XYw.py $</$$e1 $</$$e2 <(zcat on.sub.gz | grep -P "^<\w+\.n") \
+			2>/tmp/missing | wkmeans -r 16 -l -w -v -s ${SEED} -k $* |\
+			gzip > aiku/on/km-p-other-embeddings/$$e1-$$e2-n-$*.km.gz;\
+		done;\
+	done;\
 
 on.%.tab: scores
 	python score2tab.py $*.Yv.  $< | tee $@
@@ -389,3 +500,33 @@ ims.on.%.ans: ../keys/on.%-0.9.key ims.on.ans
 scores/ims.on.%.score: ../keys/on.%-0.9.key ims.on.%.ans
 	java -jar ${SS_JAR} -s --no-remapping $^ | tail -2 | tee $@ 
 	java -jar ${PFS_JAR} ims.on.ans ../keys/on.%-0.9.key | tail -1 | tee -a $@
+
+### KNN ###
+
+aiku/on/dists/noun.XYw.knn%.gz: aiku/on/scode-pos-90/noun.scode.gz on.sub.gz
+	base=`basename $@`;\
+	python concat-XYw.py $< $< <(zcat on.sub.gz | grep -P "^<\w+\.n") --subs_embed_same |\
+	python predist.py aiku/on/dists/instances.$$base | dists -d $* -p 40 | gzip > $@;\
+	make aiku/on/dists/instances.$$base
+
+aiku/on/dists/verb.XYw.knn%.gz: aiku/on/scode-pos-90/verb.scode.gz on.sub.gz
+	base=`basename $@`;\
+	python concat-XYw.py $< $< <(zcat on.sub.gz | grep -P "^<\w+\.v") --subs_embed_same |\
+	python predist.py aiku/on/dists/instances.$$base | dists -d $* -p 30 | gzip > $@;\
+	make aiku/on/dists/instances.$$base
+
+aiku/on/dists/instances.verb.XYw.knn%.gz:
+	touch $@
+
+aiku/on/dists/instances.noun.XYw.knn%.gz:
+	touch $@
+
+scores/verb.XYw.knn%.score: aiku/on/dists/verb.XYw.knn%.gz aiku/on/dists/instances.verb.XYw.knn%.gz
+	for i in 2 4 8 16 32 64 128 256 512 1000; do\
+		python instance_mapper.py $^ | python knn.py $$i ../keys/on.v-0.9.key;\
+	done | tee $@; 
+
+scores/noun.XYw.knn%.score: aiku/on/dists/noun.XYw.knn%.gz aiku/on/dists/instances.noun.XYw.knn%.gz
+	for i in 2 4 8 16 32 64 128 256 512 1000; do\
+		python instance_mapper.py $^ | python knn.py $$i ../keys/on.n-0.9.key;\
+	done | tee $@; 

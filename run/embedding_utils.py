@@ -84,12 +84,13 @@ def concat_XYw(embedding_d1, embedding_d2, sub_vecs, target_word_strip_func=None
     dim = len(embedding_d2[embedding_d2.keys()[0]][0])# Y vectors dimensionality
 
     for target_word, sub_probs in sub_vecs:
+        t = target_word
         if func is not None:
-            target_word = func(target_word)
+            t = func(target_word)
         try:
-            X = embedding_d1[target_word][0] # [0] -> vector, [1] -> #of occurrences
+            X = embedding_d1[t][0] # [0] -> vector, [1] -> #of occurrences
         except KeyError:
-            print >> sys.stderr, "no X embedding for %s" % target_word
+            print >> sys.stderr, "no X embedding for %s" % t
             continue # pass this on
         Y_bar = np.zeros(dim)
         for sub, prob in sub_probs:

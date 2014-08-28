@@ -11,6 +11,7 @@ Volkan's method
 from itertools import izip
 from fastsubs_utils import read_sub_vectors
 from embedding_utils import read_embedding_vectors, concat_XYw, get_X, get_Y
+import re
 import argparse
 
 parser = argparse.ArgumentParser()
@@ -25,8 +26,9 @@ embedding_f1 = args.x_embedding_file
 embedding_f2 = args.y_embedding_file
 sub_f = args.subs_file   # sub file (we need it for weighting)
 
+regex = re.compile("<(\w+)\.")
 def func(target_word):
-    return target_word.split('.')[1:]
+    return regex.match(target_word).group(1)
 
 if args.subs_embed_same: # if we use same embeddings, we don't need to provide strip func
     func = None

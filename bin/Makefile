@@ -1,4 +1,4 @@
-all: fastsubs scode wkmeans wordsub metrics
+all: fastsubs scode wkmeans wordsub metrics dists
 
 ### Reprository Check-out Commands
 ## If the latest version is required then do not set the corresponding

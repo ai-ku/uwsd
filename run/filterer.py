@@ -21,6 +21,8 @@ for line in fopen(gold_file):
     instance_id = line.split()[gold_column_no]
     instances.add(instance_id)
 
+print >> sys.stderr, len(instances), system_file
+
 for line in fopen(system_file):
     if line.split()[target_column_no] in instances:
         print line,
